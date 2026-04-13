@@ -26,6 +26,11 @@
 7. `resolveDeviation()` 计算 cents 偏差与方向
 8. UI 根据 `TunerState` 渲染状态与调试读数
 
+补充（最新变更）：
+
+9. 页面支持列出可用麦克风输入源，并允许用户手动选择输入设备
+10. 选定设备后，后续启动调音会优先使用该输入源
+
 ## 4. Audio and Detection Parameters
 
 ### 4.1 Frame capture
@@ -83,10 +88,12 @@
 - 标准六弦目标映射（E2 A2 D3 G3 B3 E4）
 - 候选检测 + 稳定化 + 偏差方向基本闭环
 - 调试读数面板（频率、音名、cents、clarity、sampleCount）
+- 麦克风输入源刷新与手动选择（device picker）
+- 开发日志控制台（permission/audio/detector 等事件时间线）
 
 ### 7.2 Not implemented
 
-- 手动目标弦切换 UI
+- 手动目标弦切换 UI（与输入源选择是两件事）
 - alternate tuning（降半音、开放和弦等）
 - 多乐器模式
 - AudioWorklet 版本检测链路

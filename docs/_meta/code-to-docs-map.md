@@ -51,6 +51,9 @@
 - `src/components/DebugReadoutCard.tsx`
   - `docs/development/00-overview/codemaps/frontend/components/debug-readout-card.md`
   - `docs/development/30-modules/ui-and-interaction-current.md`
+- `src/components/DeveloperLogConsole.tsx`
+  - `docs/development/00-overview/codemaps/frontend/components/developer-log-console.md`
+  - `docs/development/30-modules/ui-and-interaction-current.md`
 
 ## 4) Audio Library
 
@@ -72,6 +75,9 @@
   - `docs/development/00-overview/codemaps/frontend/lib/audio-pitch-stabilizer.md`
   - `docs/development/30-modules/audio-and-detection-current.md`
   - `docs/development/30-modules/type-contracts-current.md`
+- `src/lib/logging/developerLogger.ts`
+  - `docs/development/00-overview/codemaps/frontend/lib/logging-developer-logger.md`
+  - `docs/development/30-modules/ui-and-interaction-current.md`
 
 ## 5) Music Library
 

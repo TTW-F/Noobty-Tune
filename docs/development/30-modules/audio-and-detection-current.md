@@ -21,6 +21,13 @@
 - `suspend()` / `resume()`：切换 `AudioContext` 运行状态
 - `dispose()`：停止 tracks、断开 analyser、关闭 context
 
+与输入设备选择相关的使用方式（由 Hook 驱动）：
+
+- 可枚举可用输入源列表
+- 可维护“偏好输入设备 ID”
+- 启动会话时优先使用用户当前选择的输入源
+- 关键生命周期节点会写入开发日志（scope: `permission` / `audio`）
+
 当前启用的 getUserMedia 音频约束：
 
 - `autoGainControl: false`
@@ -96,3 +103,4 @@
 - `src/lib/audio/pitchDetector.ts`
 - `src/lib/audio/pitchStabilizer.ts`
 - `src/features/tuner/model/useTunerPrototype.ts`
+- `src/lib/logging/developerLogger.ts`

@@ -6,5 +6,5 @@
 
 ## Modules
 ### `lib/audio/microphoneManager.ts`
-- Imports: `../../types/tuner`, `./frameCapture`
-- Exports: `BrowserMicrophoneManager`, `MicrophoneManager`, `MicrophoneSession`
+- Imports: `../../types/tuner`, `../logging/developerLogger`, `./frameCapture`
+- Exports: `AudioInputDevice`, `BrowserMicrophoneManager`, `MicrophoneManager`, `MicrophoneSession`

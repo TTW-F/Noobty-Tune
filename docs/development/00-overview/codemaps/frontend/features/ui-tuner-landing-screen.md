@@ -6,5 +6,5 @@
 
 ## Modules
 ### `features/tuner/ui/TunerLandingScreen.tsx`
-- Imports: `../../../components/DebugReadoutCard`, `../../../components/PageShell`, `../../../components/PrimaryButton`, `../../../components/StatusCard`, `../../../lib/music`, `../../../types/tuner`
+- Imports: `../../../components/DebugReadoutCard`, `../../../components/DeveloperLogConsole`, `../../../components/PageShell`, `../../../components/PrimaryButton`, `../../../components/StatusCard`, `../../../lib/audio`, `../../../lib/logging/developerLogger`, `../../../lib/music`, `../../../types/tuner`, `react`
 - Exports: `TunerLandingScreen`

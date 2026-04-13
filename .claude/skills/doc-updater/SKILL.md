@@ -79,6 +79,21 @@ description: 从代码自动生成和刷新文档与 codemaps（结构图、模�
    - 文档映射关系（code -> docs）
    - 未覆盖项与原因
 
+## 差异基线定义（新增硬规则）
+
+为避免“只看当前工作区变更”导致漏文档，差异范围必须按以下方式计算：
+
+1. 先定位 Manual Layer 文档的最近提交点（baseline commit）。
+2. 计算 `baseline..HEAD` 的累计代码变化。
+3. 再叠加当前工作区未提交变化（working tree diff）。
+4. 最终差异集合 = `baseline..HEAD` + `working tree`。
+
+执行要求：
+
+- 禁止仅以 `git status` 作为唯一差异来源。
+- 发生分支切换或文档重建后，必须重新计算 baseline。
+- 输出必须明确写出 baseline commit 与累计差异文件列表。
+
 ## 推荐产物结构（默认分层，非扁平）
 
 ```text
