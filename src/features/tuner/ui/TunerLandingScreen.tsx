@@ -1,4 +1,5 @@
 import { STANDARD_GUITAR_TUNING } from "../../../lib/music";
+import { DebugReadoutCard, type DebugReadoutData } from "../../../components/DebugReadoutCard";
 import { PageShell } from "../../../components/PageShell";
 import { PrimaryButton } from "../../../components/PrimaryButton";
 import { StatusCard } from "../../../components/StatusCard";
@@ -87,15 +88,47 @@ type TunerLandingScreenProps = {
   isStarting: boolean;
   onStart: () => void | Promise<void>;
   onReset: () => void | Promise<void>;
+  debugReadout?: DebugReadoutData;
 };
+
+function getFallbackTargetLabel(state: TunerState) {
+  if (state.activeTarget) {
+    return `${state.activeTarget.label} / ${state.activeTarget.note}${state.activeTarget.octave}`;
+  }
+
+  if (state.selection.targetId) {
+    return state.selection.targetId;
+  }
+
+  return state.selection.mode === "auto" ? "Auto" : null;
+}
+
+function buildDebugReadout(state: TunerState, override?: DebugReadoutData): DebugReadoutData {
+  const reading = state.stabilizedPitch ?? state.detectedPitch;
+
+  return {
+    audioStatus: override?.audioStatus ?? state.audioStatus,
+    frequencyHz: override?.frequencyHz ?? reading?.frequencyHz ?? null,
+    noteLabel:
+      override?.noteLabel ??
+      (state.activeTarget ? `${state.activeTarget.note}${state.activeTarget.octave}` : null),
+    cents: override?.cents ?? state.deviation?.cents ?? null,
+    targetLabel: override?.targetLabel ?? getFallbackTargetLabel(state),
+    clarity: override?.clarity ?? reading?.clarity ?? null,
+    sampleCount: override?.sampleCount ?? state.stabilizedPitch?.sampleCount ?? null,
+    source: override?.source ?? reading?.source ?? null,
+  };
+}
 
 export function TunerLandingScreen({
   state,
   isStarting,
   onStart,
   onReset,
+  debugReadout,
 }: TunerLandingScreenProps) {
   const currentPrompt = getPromptFromState(state);
+  const resolvedDebugReadout = buildDebugReadout(state, debugReadout);
 
   return (
     <PageShell
@@ -158,6 +191,8 @@ export function TunerLandingScreen({
             tone="neutral"
           />
         </div>
+
+        <DebugReadoutCard data={resolvedDebugReadout} />
 
         {(state.uiStatus === "permission-denied" || state.uiStatus === "error") && (
           <button

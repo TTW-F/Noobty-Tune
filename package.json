@@ -11,6 +11,7 @@
     "docs:index": "python scripts/generate_docs_link_index.py"
   },
   "dependencies": {
+    "pitchfinder": "^2.3.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },

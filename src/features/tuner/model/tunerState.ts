@@ -1,5 +1,18 @@
-import { getStandardTuningTarget } from "../../../lib/music/standardTuning";
-import type { PitchReading, StabilizedPitchReading, TunerDeviation, TunerEngineError, TunerSelection, TunerState, TuningTarget } from "../../../types/tuner";
+import {
+  createDeviationFromCents,
+  findClosestTuningTarget,
+  getCentsOffset,
+  getStandardTuningTarget,
+} from "../../../lib/music";
+import type {
+  PitchReading,
+  StabilizedPitchReading,
+  TunerDeviation,
+  TunerEngineError,
+  TunerSelection,
+  TunerState,
+  TuningTarget,
+} from "../../../types/tuner";
 
 export const DEFAULT_TUNER_SELECTION: TunerSelection = {
   mode: "auto",
@@ -65,4 +78,40 @@ export function createListeningState(input: {
     stabilizedPitch: input.stabilizedPitch ?? null,
     deviation: input.deviation ?? null,
   });
+}
+
+export function resolveActiveTarget(
+  selection: TunerSelection,
+  detectedPitch: PitchReading | null,
+  stabilizedPitch: StabilizedPitchReading | null,
+): TuningTarget | null {
+  const manuallySelectedTarget = getSelectedTarget(selection);
+
+  if (manuallySelectedTarget) {
+    return manuallySelectedTarget;
+  }
+
+  if (stabilizedPitch?.target) {
+    return stabilizedPitch.target;
+  }
+
+  if (detectedPitch) {
+    return findClosestTuningTarget(detectedPitch.frequencyHz);
+  }
+
+  return null;
+}
+
+export function resolveDeviation(
+  target: TuningTarget | null,
+  stabilizedPitch: StabilizedPitchReading | null,
+  detectedPitch: PitchReading | null,
+): TunerDeviation | null {
+  const activeReading = stabilizedPitch ?? detectedPitch;
+
+  if (!target || !activeReading) {
+    return null;
+  }
+
+  return createDeviationFromCents(getCentsOffset(activeReading.frequencyHz, target.frequencyHz));
 }

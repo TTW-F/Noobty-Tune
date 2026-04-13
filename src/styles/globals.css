@@ -242,6 +242,72 @@ button {
   color: var(--muted);
 }
 
+.debug-readout-card {
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+}
+
+.debug-readout-header {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.debug-readout-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--info);
+}
+
+.debug-readout-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.debug-readout-description {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.debug-readout-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.debug-readout-item {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.debug-readout-item dt {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.debug-readout-item dd {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  word-break: break-word;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .primary-button {
     transition: none;
@@ -263,5 +329,9 @@ button {
 
   .status-stack {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .debug-readout-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

@@ -32,16 +32,29 @@ export type TunerUiStatus =
   | "in-tune"
   | "error";
 
+export interface AudioFrame {
+  readonly samples: Float32Array;
+  readonly sampleRate: number;
+  readonly timestampMs: number;
+  readonly rms: number;
+  readonly peak: number;
+}
+
 export interface PitchReading {
   readonly frequencyHz: number;
   readonly clarity: number;
   readonly timestampMs: number;
   readonly source: DetectionSource;
+  readonly rms?: number;
+  readonly noteName?: NoteName;
+  readonly octave?: number;
+  readonly cents?: number;
 }
 
 export interface StabilizedPitchReading extends PitchReading {
   readonly stable: boolean;
   readonly sampleCount: number;
+  readonly target: TuningTarget | null;
 }
 
 export interface TuningTarget {
@@ -55,6 +68,14 @@ export interface TuningTarget {
 export interface TunerDeviation {
   readonly cents: number;
   readonly direction: "flat" | "in-tune" | "sharp";
+}
+
+export interface NoteMatch {
+  readonly note: NoteName;
+  readonly octave: number;
+  readonly midi: number;
+  readonly frequencyHz: number;
+  readonly cents: number;
 }
 
 export interface TunerSelection {

@@ -1,9 +1,11 @@
 import type { AudioEngineStatus, TunerEngineError } from "../../types/tuner";
+import { AnalyserTimeDomainFrameCapture, type TimeDomainFrameCapture } from "./frameCapture";
 
 export interface MicrophoneSession {
   readonly audioContext: AudioContext;
   readonly stream: MediaStream;
   readonly sourceNode: MediaStreamAudioSourceNode;
+  readonly frameCapture: TimeDomainFrameCapture;
 }
 
 export interface MicrophoneManager {
@@ -64,11 +66,13 @@ export class BrowserMicrophoneManager implements MicrophoneManager {
 
       const audioContext = new AudioContext();
       const sourceNode = audioContext.createMediaStreamSource(stream);
+      const frameCapture = new AnalyserTimeDomainFrameCapture(sourceNode);
 
       this.session = {
         audioContext,
         stream,
         sourceNode,
+        frameCapture,
       };
       this.status = audioContext.state === "running" ? "ready" : "suspended";
 
@@ -126,6 +130,7 @@ export class BrowserMicrophoneManager implements MicrophoneManager {
     }
 
     this.session.stream.getTracks().forEach((track) => track.stop());
+    this.session.frameCapture.dispose();
     await this.session.audioContext.close();
     this.session = null;
     this.status = "idle";
