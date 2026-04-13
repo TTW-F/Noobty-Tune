@@ -2,3 +2,4 @@ deploy/keys/
 **/__pycache__/
 *.pyc
 logs/
+node_modules/
