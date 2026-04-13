@@ -7,8 +7,9 @@ import {
   RollingPitchStabilizer,
   YinPitchDetector,
 } from "../../../lib/audio";
-import type { TunerEngineError, TunerState } from "../../../types";
+import type { TunerEngineError, TunerState, TuningStringId } from "../../../types";
 import {
+  DEFAULT_TUNER_SELECTION,
   createListeningState,
   createPermissionDeniedState,
   createTunerStateSnapshot,
@@ -129,6 +130,27 @@ export function useTunerPrototype() {
       window.clearInterval(loopHandleRef.current);
       loopHandleRef.current = null;
     }
+  }
+
+  async function refreshInputDevices() {
+    const manager = managerRef.current;
+    const devices = await manager.listInputDevices();
+    setAvailableInputs(devices);
+
+    const preferredDeviceId = manager.getPreferredInputDeviceId();
+    if (preferredDeviceId) {
+      setSelectedInputDeviceId(preferredDeviceId);
+      return devices;
+    }
+
+    const session = manager.getSession();
+    if (session?.inputDeviceId) {
+      setSelectedInputDeviceId(session.inputDeviceId);
+      return devices;
+    }
+
+    setSelectedInputDeviceId(devices[0]?.deviceId ?? null);
+    return devices;
   }
 
   useEffect(() => {
@@ -285,27 +307,6 @@ export function useTunerPrototype() {
     }, 75);
   }
 
-  async function refreshInputDevices() {
-    const manager = managerRef.current;
-    const devices = await manager.listInputDevices();
-    setAvailableInputs(devices);
-
-    const preferredDeviceId = manager.getPreferredInputDeviceId();
-    if (preferredDeviceId) {
-      setSelectedInputDeviceId(preferredDeviceId);
-      return devices;
-    }
-
-    const session = manager.getSession();
-    if (session?.inputDeviceId) {
-      setSelectedInputDeviceId(session.inputDeviceId);
-      return devices;
-    }
-
-    setSelectedInputDeviceId(devices[0]?.deviceId ?? null);
-    return devices;
-  }
-
   async function startWithCurrentInput() {
     const manager = managerRef.current;
     const session = await manager.start();
@@ -322,8 +323,6 @@ export function useTunerPrototype() {
   }
 
   async function startTuning() {
-    const manager = managerRef.current;
-
     setState(
       createTunerStateSnapshot({
         audioStatus: "requesting-permission",
@@ -424,6 +423,33 @@ export function useTunerPrototype() {
     await refreshInputDevices();
   }
 
+  function enableAutoTargetMode() {
+    appLogger.info("Target mode updated", "Switched tuning target mode to auto.");
+    setState((previousState) =>
+      createTunerStateSnapshot({
+        ...previousState,
+        selection: DEFAULT_TUNER_SELECTION,
+      }),
+    );
+  }
+
+  function selectManualTarget(targetId: TuningStringId) {
+    appLogger.info("Target mode updated", "Switched tuning target mode to manual.", {
+      meta: {
+        targetId,
+      },
+    });
+    setState((previousState) =>
+      createTunerStateSnapshot({
+        ...previousState,
+        selection: {
+          mode: "manual",
+          targetId,
+        },
+      }),
+    );
+  }
+
   return {
     state,
     detectorComparison,
@@ -434,6 +460,8 @@ export function useTunerPrototype() {
     resetSession,
     refreshInputDevices,
     selectInputDevice,
+    enableAutoTargetMode,
+    selectManualTarget,
     isStarting: state.uiStatus === "requesting-permission",
   };
 }

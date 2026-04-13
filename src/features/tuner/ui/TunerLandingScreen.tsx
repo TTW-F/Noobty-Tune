@@ -1,11 +1,12 @@
 import type { CSSProperties } from "react";
 import { STANDARD_GUITAR_TUNING } from "../../../lib/music";
+import type { AudioInputDevice } from "../../../lib/audio";
 import { DebugReadoutCard, type DebugReadoutData } from "../../../components/DebugReadoutCard";
 import { DeveloperLogConsole } from "../../../components/DeveloperLogConsole";
 import { PageShell } from "../../../components/PageShell";
 import { PrimaryButton } from "../../../components/PrimaryButton";
 import { StatusCard } from "../../../components/StatusCard";
-import type { TunerState, TunerUiStatus } from "../../../types/tuner";
+import type { TunerState, TunerUiStatus, TuningStringId } from "../../../types/tuner";
 import type { DeveloperLogEntry } from "../../../lib/logging/developerLogger";
 
 type M1Prompt = {
@@ -25,6 +26,14 @@ type HeroPanelContent = {
   readonly instruction: string;
   readonly meterLabel: string;
   readonly meterTone: "idle" | "warning" | "active" | "success";
+};
+
+type RescueCardContent = {
+  readonly show: boolean;
+  readonly title: string;
+  readonly description: string;
+  readonly steps: readonly string[];
+  readonly tone: "warning" | "info" | "success";
 };
 
 const M1_PROMPTS: M1Prompt[] = [
@@ -141,8 +150,15 @@ type TunerLandingScreenProps = {
   isStarting: boolean;
   onStart: () => void | Promise<void>;
   onReset: () => void | Promise<void>;
+  onRefreshInputs: () => void | Promise<unknown>;
+  onSelectInput: (deviceId: string) => void | Promise<void>;
+  onEnableAutoTargetMode: () => void;
+  onSelectManualTarget: (targetId: TuningStringId) => void;
   debugReadout?: DebugReadoutData;
   developerLogs?: readonly DeveloperLogEntry[];
+  availableInputs?: readonly AudioInputDevice[];
+  selectedInputDeviceId?: string | null;
+  activeInputLabel?: string | null;
 };
 
 function getFallbackTargetLabel(state: TunerState) {
@@ -214,7 +230,7 @@ function buildHeroPanelContent(state: TunerState, debugReadout: DebugReadoutData
       : activeTarget
         ? `${activeTarget.note}${activeTarget.octave}`
         : "--";
-  const targetLabel = activeTarget ? `${activeTarget.note}${activeTarget.octave} · String ${activeTarget.label}` : "Auto target";
+  const resolvedTargetLabel = activeTarget ? `${activeTarget.note}${activeTarget.octave} · String ${activeTarget.label}` : "Auto target";
   const centsValue = state.deviation?.cents ?? reading?.cents ?? null;
   const centsLabel =
     typeof centsValue === "number"
@@ -227,7 +243,7 @@ function buildHeroPanelContent(state: TunerState, debugReadout: DebugReadoutData
   if (state.uiStatus === "in-tune") {
     return {
       noteLabel,
-      targetLabel,
+      targetLabel: resolvedTargetLabel,
       centsLabel,
       frequencyLabel,
       instruction: "In tune. Let the note ring and make tiny adjustments only if the needle drifts.",
@@ -239,7 +255,7 @@ function buildHeroPanelContent(state: TunerState, debugReadout: DebugReadoutData
   if (state.uiStatus === "no-signal") {
     return {
       noteLabel,
-      targetLabel,
+      targetLabel: resolvedTargetLabel,
       centsLabel,
       frequencyLabel,
       instruction: "We can hear almost nothing useful yet. If you just switched devices, confirm the right microphone is selected.",
@@ -251,7 +267,7 @@ function buildHeroPanelContent(state: TunerState, debugReadout: DebugReadoutData
   if (state.uiStatus === "detecting" || state.uiStatus === "unstable") {
     return {
       noteLabel,
-      targetLabel,
+      targetLabel: resolvedTargetLabel,
       centsLabel,
       frequencyLabel,
       instruction: "Pluck one string at a time and wait for the indicator to settle before tuning further.",
@@ -262,7 +278,7 @@ function buildHeroPanelContent(state: TunerState, debugReadout: DebugReadoutData
 
   return {
     noteLabel,
-    targetLabel,
+    targetLabel: resolvedTargetLabel,
     centsLabel,
     frequencyLabel,
     instruction: "Start tuning, then pluck one string clearly. The tuner will lock onto the closest standard guitar string.",
@@ -271,13 +287,77 @@ function buildHeroPanelContent(state: TunerState, debugReadout: DebugReadoutData
   };
 }
 
+function buildRescueCardContent(
+  state: TunerState,
+  frameRms: number | null | undefined,
+  activeInputLabel: string | null,
+): RescueCardContent {
+  const safeRms = typeof frameRms === "number" ? frameRms : 0;
+
+  if (state.uiStatus === "in-tune") {
+    return {
+      show: true,
+      tone: "success",
+      title: "Locked in",
+      description: "The tuner considers this note close enough to the target. Hold the note and confirm the needle stays centered.",
+      steps: [
+        `Current source: ${activeInputLabel ?? "unknown microphone"}`,
+        "Move to the next string only after the needle stays steady.",
+      ],
+    };
+  }
+
+  if (safeRms <= 0.0008 && state.audioStatus === "listening") {
+    return {
+      show: true,
+      tone: "warning",
+      title: "No usable microphone input",
+      description: "The tuner is listening, but the incoming level is effectively zero. This usually means the wrong recording device is selected.",
+      steps: [
+        "Open the input source selector and try another microphone.",
+        "Pluck the string again and watch whether the input meter rises.",
+        "If every device stays silent, check your system recording source or browser microphone permission.",
+      ],
+    };
+  }
+
+  if (safeRms <= 0.003 && state.audioStatus === "listening") {
+    return {
+      show: true,
+      tone: "info",
+      title: "Input is too weak to tune comfortably",
+      description: "A little sound is reaching the tuner, but not enough for reliable lock-on yet.",
+      steps: [
+        "Move the guitar closer to the selected microphone.",
+        "Pluck one string harder and let it sustain a bit longer.",
+        "Switch microphones if the meter stays weak on every pluck.",
+      ],
+    };
+  }
+
+  return {
+    show: false,
+    tone: "info",
+    title: "",
+    description: "",
+    steps: [],
+  };
+}
+
 export function TunerLandingScreen({
   state,
   isStarting,
   onStart,
   onReset,
+  onRefreshInputs,
+  onSelectInput,
+  onEnableAutoTargetMode,
+  onSelectManualTarget,
   debugReadout,
   developerLogs = [],
+  availableInputs = [],
+  selectedInputDeviceId = null,
+  activeInputLabel = null,
 }: TunerLandingScreenProps) {
   const currentPrompt = getPromptFromState(state);
   const resolvedDebugReadout = buildDebugReadout(state, debugReadout);
@@ -285,6 +365,15 @@ export function TunerLandingScreen({
   const centsValue = state.deviation?.cents ?? null;
   const needleOffset = typeof centsValue === "number" ? clamp(centsValue, -50, 50) : 0;
   const inputMeter = getInputMeterState(resolvedDebugReadout.frameRms);
+  const rescueCard = buildRescueCardContent(state, resolvedDebugReadout.frameRms, activeInputLabel);
+  const directionLabel =
+    state.deviation?.direction === "sharp"
+      ? "Tune down"
+      : state.deviation?.direction === "flat"
+        ? "Tune up"
+        : state.uiStatus === "in-tune"
+          ? "Perfect"
+          : "Listening";
 
   return (
     <PageShell
@@ -341,10 +430,79 @@ export function TunerLandingScreen({
                 <strong>{heroPanel.centsLabel}</strong>
                 <span>{heroPanel.frequencyLabel}</span>
               </div>
+              <div className={`direction-chip direction-chip--${state.deviation?.direction ?? "idle"}`}>
+                {directionLabel}
+              </div>
             </div>
           </div>
 
           <p className="tuner-guidance">{heroPanel.instruction}</p>
+
+          <section className="target-mode-panel" aria-labelledby="target-mode-title">
+            <div className="target-mode-header">
+              <div>
+                <p className="target-mode-kicker">Target mode</p>
+                <h3 id="target-mode-title" className="target-mode-title">
+                  Use auto detect or lock to one string
+                </h3>
+              </div>
+              <div className="target-mode-toggle">
+                <button
+                  type="button"
+                  className={`mode-chip ${state.selection.mode === "auto" ? "mode-chip--active" : ""}`}
+                  onClick={onEnableAutoTargetMode}
+                >
+                  Auto
+                </button>
+                <button
+                  type="button"
+                  className={`mode-chip ${state.selection.mode === "manual" ? "mode-chip--active" : ""}`}
+                  onClick={() => {
+                    onSelectManualTarget(state.selection.targetId ?? "string-6");
+                  }}
+                >
+                  Manual
+                </button>
+              </div>
+            </div>
+
+            <div className="manual-target-grid">
+              {STANDARD_GUITAR_TUNING.map((target) => {
+                const isManualActive = state.selection.mode === "manual" && state.selection.targetId === target.id;
+                return (
+                  <button
+                    key={target.id}
+                    type="button"
+                    className={`manual-target-pill ${isManualActive ? "manual-target-pill--active" : ""}`}
+                    onClick={() => {
+                      onSelectManualTarget(target.id);
+                    }}
+                  >
+                    <span>String {target.label}</span>
+                    <strong>
+                      {target.note}
+                      {target.octave}
+                    </strong>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {rescueCard.show ? (
+            <section className={`rescue-card rescue-card--${rescueCard.tone}`} aria-live="polite">
+              <div className="rescue-card-header">
+                <p className="rescue-card-kicker">Tuning help</p>
+                <h3 className="rescue-card-title">{rescueCard.title}</h3>
+              </div>
+              <p className="rescue-card-description">{rescueCard.description}</p>
+              <div className="rescue-card-steps">
+                {rescueCard.steps.map((step) => (
+                  <p key={step}>{step}</p>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <div className="input-health-panel" role="status" aria-live="polite">
             <div className="input-health-copy">
@@ -358,6 +516,57 @@ export function TunerLandingScreen({
               />
             </div>
           </div>
+
+          <section className="device-panel" aria-labelledby="device-panel-title">
+            <div className="device-panel-header">
+              <div>
+                <p className="device-panel-kicker">Input source</p>
+                <h3 id="device-panel-title" className="device-panel-title">
+                  Choose the microphone you actually want to tune with
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="device-refresh-button"
+                onClick={() => {
+                  void onRefreshInputs();
+                }}
+              >
+                Refresh list
+              </button>
+            </div>
+
+            <div className="device-panel-grid">
+              <label className="device-select-field">
+                <span className="device-select-label">Available microphones</span>
+                <select
+                  className="device-select"
+                  value={selectedInputDeviceId ?? ""}
+                  onChange={(event) => {
+                    void onSelectInput(event.target.value);
+                  }}
+                  disabled={availableInputs.length === 0}
+                >
+                  {availableInputs.length === 0 ? (
+                    <option value="">No microphone detected yet</option>
+                  ) : null}
+                  {availableInputs.map((device) => (
+                    <option key={device.deviceId} value={device.deviceId}>
+                      {device.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="device-active-card">
+                <span className="device-select-label">Current active source</span>
+                <strong>{activeInputLabel ?? "Not listening yet"}</strong>
+                <p>
+                  If the input meter stays near zero, switch to another microphone and pluck again.
+                </p>
+              </div>
+            </div>
+          </section>
 
           <div className="string-target-strip" aria-label="standard tuning targets">
             {STANDARD_GUITAR_TUNING.map((target) => {

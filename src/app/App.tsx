@@ -4,7 +4,20 @@ import { TunerLandingScreen } from "../features/tuner/ui/TunerLandingScreen";
 
 export function App() {
   const logs = useDeveloperLogs();
-  const { state, detectorComparison, startTuning, resetSession, isStarting } = useTunerPrototype();
+  const {
+    state,
+    detectorComparison,
+    availableInputs,
+    selectedInputDeviceId,
+    activeInputLabel,
+    startTuning,
+    resetSession,
+    refreshInputDevices,
+    selectInputDevice,
+    enableAutoTargetMode,
+    selectManualTarget,
+    isStarting,
+  } = useTunerPrototype();
   const reading = state.stabilizedPitch ?? state.detectedPitch;
   const debugReadout = {
     audioStatus: state.audioStatus,
@@ -42,6 +55,13 @@ export function App() {
       onReset={resetSession}
       debugReadout={debugReadout}
       developerLogs={logs}
+      availableInputs={availableInputs}
+      selectedInputDeviceId={selectedInputDeviceId}
+      activeInputLabel={activeInputLabel}
+      onRefreshInputs={refreshInputDevices}
+      onSelectInput={selectInputDevice}
+      onEnableAutoTargetMode={enableAutoTargetMode}
+      onSelectManualTarget={selectManualTarget}
     />
   );
 }
