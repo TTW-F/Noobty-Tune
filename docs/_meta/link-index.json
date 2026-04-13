@@ -46,6 +46,13 @@
       "last_checked_at": "2026-04-13"
     },
     {
+      "path": "docs/_meta/docs-sync-checklist.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 0,
+      "last_checked_at": "2026-04-13"
+    },
+    {
       "path": "docs/_meta/skills-for-this-stage.md",
       "status": "ok",
       "outgoing_links": [],
