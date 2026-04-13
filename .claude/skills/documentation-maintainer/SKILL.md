@@ -815,6 +815,23 @@ RACI 建议：
 - 使用 `python scripts/generate_docs_link_index.py` 自动生成 `docs/_meta/link-index.json`。
 - Skill 内置资源脚本：`python .claude/skills/documentation-maintainer/scripts/generate_docs_link_index.py`。
 
+## 与 `doc-updater` 的协同规则（防冲突）
+
+为避免“多技能重复改同一文档”或“生成后无人验收”，执行以下固定分工：
+
+1. `doc-updater` 只负责“从代码生成/刷新文档”，不做最终完成判定。
+2. 本技能负责“门禁验收与治理裁决”（触发矩阵、证据、评分卡、DoD）。
+3. 推荐顺序：先执行 `doc-updater`，再由本技能做一致性校验与收口。
+4. 若两者结论冲突，以本技能硬门禁为准，并输出冲突说明与修复动作。
+5. 任何涉及路径迁移的任务，必须由本技能执行“映射 + 修链 + 校验”闭环。
+
+最小交接信息（`doc-updater` -> `documentation-maintainer`）：
+
+- 扫描范围（目录与文件模式）
+- 生成/更新文件清单
+- 关键结论与事实来源
+- 未验证项与风险假设
+
 ## 维护产物下沉（给开发 Agent 的低污染契约）
 
 为保证开发 Agent 在日常开发中延续维护结果，维护任务完成后应同步维护：

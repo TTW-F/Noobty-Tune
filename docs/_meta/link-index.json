@@ -3,6 +3,13 @@
   "scope": "docs/**/*.md (exclude parts: ['_backup'])",
   "documents": [
     {
+      "path": "docs/_meta/docs-contract.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
       "path": "docs/_meta/docs-index-legacy.md",
       "status": "ok",
       "outgoing_links": [
@@ -78,6 +85,231 @@
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/app/app.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/app/index.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./app.md",
+        "./index.md"
+      ],
+      "incoming_count": 2,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/components/debug-readout-card.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/components/INDEX.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./debug-readout-card.md",
+        "./page-shell.md",
+        "./primary-button.md",
+        "./status-card.md"
+      ],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/components/page-shell.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/components/primary-button.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/components/status-card.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/features/INDEX.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./model.md",
+        "./model-tuner-state.md",
+        "./model-use-tuner-prototype.md",
+        "./ui-tuner-landing-screen.md"
+      ],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/features/model-tuner-state.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/features/model-use-tuner-prototype.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/features/model.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/features/ui-tuner-landing-screen.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/INDEX.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./app/INDEX.md",
+        "./components/INDEX.md",
+        "./features/INDEX.md",
+        "./lib/INDEX.md",
+        "./main/INDEX.md",
+        "./types/INDEX.md"
+      ],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-frame-capture.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-microphone-manager.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-pitch-detector.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-pitch-stabilizer.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/INDEX.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./audio.md",
+        "./audio-frame-capture.md",
+        "./audio-microphone-manager.md",
+        "./audio-pitch-detector.md",
+        "./audio-pitch-stabilizer.md",
+        "./music.md",
+        "./music-note-mapping.md",
+        "./music-standard-tuning.md"
+      ],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/music-note-mapping.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/music-standard-tuning.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/music.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/main/INDEX.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./main.md"
+      ],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/main/main.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/types/index.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./index.md",
+        "./tuner.md"
+      ],
+      "incoming_count": 2,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/types/tuner.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/INDEX.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./frontend/INDEX.md"
+      ],
+      "incoming_count": 0,
       "last_checked_at": "2026-04-13"
     },
     {
@@ -188,6 +420,7 @@
         "./_meta/skills-for-this-stage.md",
         "./_meta/docs-index-legacy.md",
         "./_meta/link-index.json",
+        "./_meta/docs-contract.md",
         "./_meta/docs-structure-audit-2026-04-13.md",
         "./_meta/docs-path-mapping-and-migration-plan-2026-04-13.md",
         "./_backup/2026-04-13/README.md"
