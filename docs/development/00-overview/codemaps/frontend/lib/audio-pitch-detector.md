@@ -7,4 +7,4 @@
 ## Modules
 ### `lib/audio/pitchDetector.ts`
 - Imports: `../../types/tuner`, `../music`
-- Exports: `PitchDetectorOptions`, `PlaceholderPitchDetector`, `YinPitchDetector`
+- Exports: `AutoCorrelationPitchDetector`, `PitchDetectorOptions`, `PlaceholderPitchDetector`, `YinPitchDetector`

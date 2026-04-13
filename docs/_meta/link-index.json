@@ -320,6 +320,22 @@
       "last_checked_at": "2026-04-13"
     },
     {
+      "path": "docs/development/30-modules/README.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./tuner-implementation-current.md"
+      ],
+      "incoming_count": 0,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/30-modules/tuner-implementation-current.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 2,
+      "last_checked_at": "2026-04-13"
+    },
+    {
       "path": "docs/development/implementation-checklist-m1.md",
       "status": "ok",
       "outgoing_links": [],
@@ -331,6 +347,13 @@
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/m2-real-device-validation-log.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 0,
       "last_checked_at": "2026-04-13"
     },
     {
@@ -410,6 +433,7 @@
         "./product-or-design/analysis-web-v1.md",
         "./product-or-design/prd-web-v1.md",
         "./development/technical-design-web-v1.md",
+        "./development/30-modules/tuner-implementation-current.md",
         "./product-or-design/ui-spec-web-v1.md",
         "./development/test-plan-web-v1.md",
         "./development/wbs-web-v1.md",

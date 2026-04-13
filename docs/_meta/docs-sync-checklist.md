@@ -1,6 +1,6 @@
 # Docs Sync Checklist
 
-- Generated At: `2026-04-13T14:57:42.816Z`
+- Generated At: `2026-04-13T15:09:38.294Z`
 - Pipeline: `docs:codemap` -> `docs:index`
 
 ## Execution Status
