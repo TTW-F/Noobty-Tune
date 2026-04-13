@@ -1,8 +1,17 @@
+import { useTunerPrototype } from "../features/tuner/model";
 import { TunerLandingScreen } from "../features/tuner/ui/TunerLandingScreen";
-import "../styles/globals.css";
 
 export function App() {
-  return <TunerLandingScreen />;
+  const { state, startTuning, resetSession, isStarting } = useTunerPrototype();
+
+  return (
+    <TunerLandingScreen
+      state={state}
+      isStarting={isStarting}
+      onStart={startTuning}
+      onReset={resetSession}
+    />
+  );
 }
 
 export default App;
