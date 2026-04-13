@@ -3,3 +3,4 @@ deploy/keys/
 *.pyc
 logs/
 node_modules/
+dist/
