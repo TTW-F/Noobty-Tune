@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AutoCorrelationPitchDetector,
+  type AudioInputDevice,
   BrowserMicrophoneManager,
   type MicrophoneSession,
   RollingPitchStabilizer,
@@ -118,6 +119,9 @@ export function useTunerPrototype() {
   const [detectorComparison, setDetectorComparison] = useState<DetectorComparisonDebug>(
     INITIAL_DETECTOR_COMPARISON_DEBUG,
   );
+  const [availableInputs, setAvailableInputs] = useState<AudioInputDevice[]>([]);
+  const [selectedInputDeviceId, setSelectedInputDeviceId] = useState<string | null>(null);
+  const [activeInputLabel, setActiveInputLabel] = useState<string | null>(null);
   const previousUiStatusRef = useRef<TunerState["uiStatus"]>(INITIAL_TUNER_STATE.uiStatus);
 
   function stopProcessingLoop() {
@@ -129,6 +133,7 @@ export function useTunerPrototype() {
 
   useEffect(() => {
     const manager = managerRef.current;
+    void refreshInputDevices();
 
     return () => {
       stopProcessingLoop();
@@ -274,9 +279,46 @@ export function useTunerPrototype() {
     comparisonDetectorRef.current.reset?.();
     stabilizerRef.current.reset();
     setDetectorComparison(INITIAL_DETECTOR_COMPARISON_DEBUG);
+    setActiveInputLabel(session.inputDeviceLabel);
     loopHandleRef.current = window.setInterval(() => {
       processAudioFrame(session);
     }, 75);
+  }
+
+  async function refreshInputDevices() {
+    const manager = managerRef.current;
+    const devices = await manager.listInputDevices();
+    setAvailableInputs(devices);
+
+    const preferredDeviceId = manager.getPreferredInputDeviceId();
+    if (preferredDeviceId) {
+      setSelectedInputDeviceId(preferredDeviceId);
+      return devices;
+    }
+
+    const session = manager.getSession();
+    if (session?.inputDeviceId) {
+      setSelectedInputDeviceId(session.inputDeviceId);
+      return devices;
+    }
+
+    setSelectedInputDeviceId(devices[0]?.deviceId ?? null);
+    return devices;
+  }
+
+  async function startWithCurrentInput() {
+    const manager = managerRef.current;
+    const session = await manager.start();
+    await refreshInputDevices();
+    startProcessingLoop(session);
+    setState(createListeningState());
+    appLogger.success("Tuner listening", "Tuner entered the active listening loop.", {
+      meta: {
+        sampleRate: session.audioContext.sampleRate,
+        audioState: session.audioContext.state,
+        inputDevice: session.inputDeviceLabel ?? "unknown",
+      },
+    });
   }
 
   async function startTuning() {
@@ -292,15 +334,7 @@ export function useTunerPrototype() {
     appLogger.info("Start tuning", "User requested the tuner session to start.");
 
     try {
-      const session = await manager.start();
-      startProcessingLoop(session);
-      setState(createListeningState());
-      appLogger.success("Tuner listening", "Tuner entered the active listening loop.", {
-        meta: {
-          sampleRate: session.audioContext.sampleRate,
-          audioState: session.audioContext.state,
-        },
-      });
+      await startWithCurrentInput();
     } catch (error) {
       stopProcessingLoop();
       const tunerError = toTunerEngineError(error);
@@ -343,14 +377,63 @@ export function useTunerPrototype() {
 
     appLogger.info("Session reset", "Tuner session was reset and returned to idle.");
     setDetectorComparison(INITIAL_DETECTOR_COMPARISON_DEBUG);
+    setActiveInputLabel(null);
     setState(INITIAL_TUNER_STATE);
+  }
+
+  async function selectInputDevice(deviceId: string) {
+    const manager = managerRef.current;
+    manager.setPreferredInputDevice(deviceId);
+    setSelectedInputDeviceId(deviceId);
+
+    const matchingDevice = availableInputs.find((device) => device.deviceId === deviceId);
+    appLogger.info("Input device selected", "User selected a microphone input device.", {
+      meta: {
+        deviceId,
+        label: matchingDevice?.label ?? "unknown",
+      },
+    });
+
+    if (state.audioStatus === "listening" || state.audioStatus === "ready" || state.audioStatus === "suspended") {
+      stopProcessingLoop();
+      await manager.dispose();
+      setActiveInputLabel(null);
+      setState(
+        createTunerStateSnapshot({
+          audioStatus: "requesting-permission",
+          uiStatus: "requesting-permission",
+          lastError: null,
+        }),
+      );
+
+      try {
+        await startWithCurrentInput();
+      } catch (error) {
+        const tunerError = toTunerEngineError(error);
+        setState(
+          createTunerStateSnapshot({
+            audioStatus: "error",
+            uiStatus: "error",
+            lastError: tunerError,
+          }),
+        );
+      }
+      return;
+    }
+
+    await refreshInputDevices();
   }
 
   return {
     state,
     detectorComparison,
+    availableInputs,
+    selectedInputDeviceId,
+    activeInputLabel,
     startTuning,
     resetSession,
+    refreshInputDevices,
+    selectInputDevice,
     isStarting: state.uiStatus === "requesting-permission",
   };
 }
