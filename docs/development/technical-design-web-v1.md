@@ -1,8 +1,40 @@
-# Noobty Tune Web V1 技术设计草案
+# Noobty Tune Web V1 技术设计（现状基线 + 演进建议）
 
 ## 1. 文档目标
 
-本文件用于将 `PRD` 中定义的产品需求转化为可实现的技术方案，重点回答以下问题：
+本文件先给出“当前代码已实现的技术基线”，再给出后续演进建议，避免把规划当成现状。
+
+## 2. 当前实现基线（以代码为准）
+
+事实来源：`src/` 实际实现与 `docs/development/30-modules/*`。
+
+当前已落地的技术闭环：
+
+- Web 单页入口：`src/main.tsx` -> `src/app/App.tsx`
+- 音频输入：`BrowserMicrophoneManager`（权限申请、AudioContext 生命周期）
+- 音频采样：`AnalyserTimeDomainFrameCapture`（时域帧 + RMS/Peak）
+- 检测算法：`YinPitchDetector` 为主，`AutoCorrelationPitchDetector` 为对比实现
+- 稳定化：`RollingPitchStabilizer`（窗口样本 + cents spread）
+- 目标匹配：标准六弦自动匹配（`E2 A2 D3 G3 B3 E4`）
+- UI 状态：`idle/requesting-permission/permission-denied/listening/detecting/unstable/in-tune/error`
+
+当前明确未落地能力：
+
+- 手动选弦 UI
+- alternate tuning / 多乐器
+- AudioWorklet 处理链路
+- 自动化回归测试体系
+
+对应实现文档：
+
+- `docs/development/30-modules/tuner-implementation-current.md`
+- `docs/development/30-modules/audio-and-detection-current.md`
+- `docs/development/30-modules/ui-and-interaction-current.md`
+- `docs/development/30-modules/type-contracts-current.md`
+
+## 3. 设计与演进问题清单
+
+以下内容用于回答后续“如何演进”：
 
 - Web 版吉他调音器的最小技术闭环是什么
 - 系统应如何拆分模块
@@ -10,7 +42,7 @@
 - 哪些实现细节需要优先验证
 - 如何为后续桌面端和 App 复用打基础
 
-## 2. 设计原则
+## 4. 设计原则
 
 ### 目标优先级
 
@@ -36,7 +68,7 @@
 - 优先建立可测的纯逻辑模块
 - 在满足需求前提下，先选实现复杂度更低的方案
 
-## 3. 系统边界
+## 5. 系统边界
 
 ### V1 系统输入
 
@@ -60,7 +92,7 @@
 - 音频上传分析
 - 复杂推荐逻辑
 
-## 4. 总体架构
+## 6. 总体架构
 
 建议采用单页前端架构，分为四层：
 
@@ -93,7 +125,7 @@
 - `Audio Domain Layer` 不直接操作界面
 - 检测引擎的输出应是结构化结果，而不是页面专用字段
 
-## 5. 模块拆分建议
+## 7. 模块拆分建议
 
 ### 5.1 Audio Input
 
@@ -213,7 +245,7 @@ V1 建议：
 - 自动识别更适合新手
 - 但在相邻音之间反复跳转时，手动锁定可能是后续体验优化点
 
-## 6. 音频链路建议
+## 8. 音频链路建议
 
 ### 建议链路
 
@@ -241,7 +273,7 @@ V1 建议：
 - `AudioWorklet` 承担持续性音频处理
 - 主线程负责状态管理和 UI 更新
 
-## 7. 算法选择建议
+## 9. 算法选择建议
 
 ### 候选路线 A：YIN
 
@@ -273,7 +305,7 @@ V1 建议：
 - 如果 `YIN` 在低 E 至高 E 的整体表现更稳，则优先作为 V1 主方案
 - 若纯 JavaScript 版本性能或稳定性不足，再评估 `WASM`
 
-## 8. 关键计算逻辑
+## 10. 关键计算逻辑
 
 ### 音名映射
 
@@ -303,7 +335,7 @@ V1 建议：
 
 最终阈值必须通过真实设备测试调整，不宜现在写死为产品承诺。
 
-## 9. 状态机设计
+## 11. 状态机设计
 
 ### 页面主状态
 
@@ -332,7 +364,7 @@ detecting -> unstable
 - 每个状态都应能映射到具体文案和视觉反馈
 - 错误状态应提供恢复路径
 
-## 10. UI 与检测分离策略
+## 12. UI 与检测分离策略
 
 建议不要让组件直接依赖底层原始采样结果。
 
@@ -348,7 +380,7 @@ detecting -> unstable
 - 更容易做单元测试
 - 更适合未来多端复用
 
-## 11. 可测试性设计
+## 13. 可测试性设计
 
 ### 纯逻辑层优先可测试
 
@@ -377,7 +409,7 @@ detecting -> unstable
 - 安静 / 噪声环境
 - 桌面 / 移动浏览器
 
-## 12. 后续多端复用策略
+## 14. 后续多端复用策略
 
 为了支持未来桌面端和 App，建议从一开始就把以下边界拆清楚：
 
@@ -401,7 +433,7 @@ detecting -> unstable
 - `platform/web/`：浏览器输入与页面接入
 - `app/web/`：Web UI
 
-## 13. 关键风险与缓解策略
+## 15. 关键风险与缓解策略
 
 ### 风险 1：低频识别不稳
 
@@ -434,7 +466,7 @@ detecting -> unstable
 - V1 先自动匹配最近弦
 - 记录是否需要在 V1.1 增加手动锁定弦功能
 
-## 14. 建议的实现顺序
+## 16. 建议的实现顺序
 
 1. 建立频率、音名、偏差计算的纯逻辑模块
 2. 接通麦克风与基础音频链路
@@ -444,7 +476,7 @@ detecting -> unstable
 6. 做真实设备验证
 7. 再决定是否引入更强底层实现
 
-## 15. 当前待定项
+## 17. 当前待定项
 
 - V1 是否同时提供手动选弦
 - 检测层是直接上 `AudioWorklet` 还是先用更轻方案验证

@@ -8,3 +8,6 @@
 ## Modules
 
 - [Tuner Current Implementation](./tuner-implementation-current.md)
+- [Audio and Detection Current](./audio-and-detection-current.md)
+- [UI and Interaction Current](./ui-and-interaction-current.md)
+- [Type Contracts Current](./type-contracts-current.md)

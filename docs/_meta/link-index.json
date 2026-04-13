@@ -320,16 +320,40 @@
       "last_checked_at": "2026-04-13"
     },
     {
+      "path": "docs/development/30-modules/audio-and-detection-current.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 2,
+      "last_checked_at": "2026-04-13"
+    },
+    {
       "path": "docs/development/30-modules/README.md",
       "status": "ok",
       "outgoing_links": [
-        "./tuner-implementation-current.md"
+        "./tuner-implementation-current.md",
+        "./audio-and-detection-current.md",
+        "./ui-and-interaction-current.md",
+        "./type-contracts-current.md"
       ],
-      "incoming_count": 0,
+      "incoming_count": 1,
       "last_checked_at": "2026-04-13"
     },
     {
       "path": "docs/development/30-modules/tuner-implementation-current.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 2,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/30-modules/type-contracts-current.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 2,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/development/30-modules/ui-and-interaction-current.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
@@ -432,14 +456,18 @@
       "outgoing_links": [
         "./product-or-design/analysis-web-v1.md",
         "./product-or-design/prd-web-v1.md",
-        "./development/technical-design-web-v1.md",
-        "./development/30-modules/tuner-implementation-current.md",
         "./product-or-design/ui-spec-web-v1.md",
-        "./development/test-plan-web-v1.md",
+        "./development/technical-design-web-v1.md",
         "./development/wbs-web-v1.md",
         "./development/milestones-web-v1.md",
         "./development/implementation-plan-m1.md",
         "./development/implementation-checklist-m1.md",
+        "./development/30-modules/README.md",
+        "./development/30-modules/tuner-implementation-current.md",
+        "./development/30-modules/audio-and-detection-current.md",
+        "./development/30-modules/ui-and-interaction-current.md",
+        "./development/30-modules/type-contracts-current.md",
+        "./development/test-plan-web-v1.md",
         "./adr/0001-web-v1-scope.md",
         "./adr/0002-browser-audio-local-first.md",
         "./adr/0003-audioworklet-preferred-architecture.md",

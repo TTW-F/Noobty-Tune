@@ -10,18 +10,28 @@
 
 ## 当前分层视图（逻辑分层）
 
-### Product / Design / Planning
+### 规划与设计（Plan / Design）
 
 - [项目分析草案](./product-or-design/analysis-web-v1.md)
 - [Web V1 PRD](./product-or-design/prd-web-v1.md)
-- [Web V1 技术设计草案](./development/technical-design-web-v1.md)
-- [Tuner 当前实现文档（代码事实）](./development/30-modules/tuner-implementation-current.md)
 - [Web V1 UI 规格](./product-or-design/ui-spec-web-v1.md)
-- [Web V1 测试计划](./development/test-plan-web-v1.md)
+- [Web V1 技术设计（现状基线 + 演进建议）](./development/technical-design-web-v1.md)
 - [Web V1 WBS](./development/wbs-web-v1.md)
 - [Web V1 里程碑](./development/milestones-web-v1.md)
 - [M1 实现计划](./development/implementation-plan-m1.md)
 - [M1 检查清单](./development/implementation-checklist-m1.md)
+
+### 实现现状（Implementation Facts）
+
+- [模块实现文档入口（代码事实）](./development/30-modules/README.md)
+- [Tuner 当前实现文档](./development/30-modules/tuner-implementation-current.md)
+- [Audio and Detection Current](./development/30-modules/audio-and-detection-current.md)
+- [UI and Interaction Current](./development/30-modules/ui-and-interaction-current.md)
+- [Type Contracts Current](./development/30-modules/type-contracts-current.md)
+
+### 测试与验证（Test / Validation）
+
+- [Web V1 测试计划（基于当前代码实现）](./development/test-plan-web-v1.md)
 
 ### Architecture Decision Records
 
@@ -31,14 +41,14 @@
 - [ADR 0004](./adr/0004-yin-as-default-pitch-detection-candidate.md)
 - [ADR 0005](./adr/0005-auto-target-string-for-v1.md)
 
-### Engineering / Operations
+### 工程运维（Engineering / Operations）
 
 - [GitHub 安全部署手册](./operations/deploy.md)
 - [部署交接说明（当前状态）](./operations/handover-deployment-status.md)
 - [Git 工具与提交提示文档](./operations/git.md)
 - [当前阶段技能结论](./_meta/skills-for-this-stage.md)
 
-### Meta
+### 元信息与治理（Meta / Governance）
 
 - [文档索引（兼容入口）](./_meta/docs-index-legacy.md)
 - [链接索引表（增量校验基线）](./_meta/link-index.json)
