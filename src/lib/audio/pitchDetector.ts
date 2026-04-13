@@ -57,6 +57,53 @@ export class YinPitchDetector implements PitchDetector {
   }
 }
 
+export class AutoCorrelationPitchDetector implements PitchDetector {
+  private readonly options: PitchDetectorOptions;
+
+  constructor(options: PitchDetectorOptions = { algorithm: "autocorrelation" }) {
+    this.options = options;
+  }
+
+  detect(input: Float32Array, sampleRate: number, timestampMs = Date.now()): PitchReading | null {
+    if (input.length < 32) {
+      return null;
+    }
+
+    const rms = calculateRms(input);
+    const rmsThreshold = this.options.rmsThreshold ?? 0.01;
+    if (rms < rmsThreshold) {
+      return null;
+    }
+
+    const detection = detectPitchWithAutocorrelation(input, sampleRate, {
+      probabilityThreshold: this.options.probabilityThreshold ?? this.options.clarityThreshold ?? 0.75,
+      minFrequencyHz: this.options.minFrequencyHz ?? 70,
+      maxFrequencyHz: this.options.maxFrequencyHz ?? 360,
+    });
+
+    if (!detection) {
+      return null;
+    }
+
+    const noteMatch = getClosestNoteMatch(detection.frequencyHz);
+
+    return {
+      frequencyHz: detection.frequencyHz,
+      clarity: detection.clarity,
+      timestampMs,
+      source: "microphone",
+      rms,
+      noteName: noteMatch?.note,
+      octave: noteMatch?.octave,
+      cents: noteMatch?.cents,
+    };
+  }
+
+  reset(): void {
+    // Current autocorrelation implementation is stateless between frames.
+  }
+}
+
 export class PlaceholderPitchDetector extends YinPitchDetector {
   constructor(options: PitchDetectorOptions = { algorithm: "placeholder" }) {
     super({
@@ -151,6 +198,66 @@ function detectPitchWithYin(
   return {
     frequencyHz,
     clarity,
+  };
+}
+
+function detectPitchWithAutocorrelation(
+  input: Float32Array,
+  sampleRate: number,
+  options: YinInternalOptions,
+): YinDetection | null {
+  const maxTau = Math.min(Math.floor(sampleRate / options.minFrequencyHz), input.length - 1);
+  const minTau = Math.max(2, Math.floor(sampleRate / options.maxFrequencyHz));
+
+  if (maxTau <= minTau) {
+    return null;
+  }
+
+  const correlationBuffer = new Float32Array(maxTau + 1);
+  let bestTau = -1;
+  let bestCorrelation = 0;
+
+  for (let tau = minTau; tau <= maxTau; tau += 1) {
+    let numerator = 0;
+    let energyA = 0;
+    let energyB = 0;
+
+    for (let index = 0; index + tau < input.length; index += 1) {
+      const sampleA = input[index];
+      const sampleB = input[index + tau];
+      numerator += sampleA * sampleB;
+      energyA += sampleA * sampleA;
+      energyB += sampleB * sampleB;
+    }
+
+    const denominator = Math.sqrt(energyA * energyB);
+    const correlation = denominator > 0 ? numerator / denominator : 0;
+    correlationBuffer[tau] = correlation;
+
+    if (correlation > bestCorrelation) {
+      bestCorrelation = correlation;
+      bestTau = tau;
+    }
+  }
+
+  if (bestTau <= 0 || bestCorrelation < options.probabilityThreshold) {
+    return null;
+  }
+
+  const refinedTau = parabolicInterpolation(correlationBuffer, bestTau);
+  const frequencyHz = sampleRate / refinedTau;
+
+  if (
+    !Number.isFinite(frequencyHz) ||
+    frequencyHz < options.minFrequencyHz ||
+    frequencyHz > options.maxFrequencyHz
+  ) {
+    return null;
+  }
+
+  return {
+    frequencyHz,
+    clarity: Math.max(0, Math.min(1, bestCorrelation)),
   };
 }
 

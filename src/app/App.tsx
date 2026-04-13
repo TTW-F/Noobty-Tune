@@ -2,7 +2,7 @@ import { useTunerPrototype } from "../features/tuner/model";
 import { TunerLandingScreen } from "../features/tuner/ui/TunerLandingScreen";
 
 export function App() {
-  const { state, startTuning, resetSession, isStarting } = useTunerPrototype();
+  const { state, detectorComparison, startTuning, resetSession, isStarting } = useTunerPrototype();
   const reading = state.stabilizedPitch ?? state.detectedPitch;
   const debugReadout = {
     audioStatus: state.audioStatus,
@@ -20,6 +20,16 @@ export function App() {
     clarity: reading?.clarity ?? null,
     sampleCount: state.stabilizedPitch?.sampleCount ?? null,
     source: reading?.source ?? null,
+    frameRms: detectorComparison.frameRms,
+    primaryAlgorithm: detectorComparison.primaryAlgorithm,
+    primaryFrequencyHz: detectorComparison.primaryFrequencyHz,
+    primaryClarity: detectorComparison.primaryClarity,
+    primaryNoteLabel: detectorComparison.primaryNoteLabel,
+    secondaryAlgorithm: detectorComparison.secondaryAlgorithm,
+    secondaryFrequencyHz: detectorComparison.secondaryFrequencyHz,
+    secondaryClarity: detectorComparison.secondaryClarity,
+    secondaryNoteLabel: detectorComparison.secondaryNoteLabel,
+    detectorDeltaHz: detectorComparison.detectorDeltaHz,
   };
 
   return (

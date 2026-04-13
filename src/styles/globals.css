@@ -276,6 +276,20 @@ button {
   color: var(--muted);
 }
 
+.debug-readout-sections {
+  display: grid;
+  gap: 16px;
+}
+
+.debug-readout-section-title {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .debug-readout-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

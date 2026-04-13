@@ -9,6 +9,16 @@ export type DebugReadoutData = {
   clarity?: number | null;
   sampleCount?: number | null;
   source?: string | null;
+  frameRms?: number | null;
+  primaryAlgorithm?: string | null;
+  primaryFrequencyHz?: number | null;
+  primaryClarity?: number | null;
+  primaryNoteLabel?: string | null;
+  secondaryAlgorithm?: string | null;
+  secondaryFrequencyHz?: number | null;
+  secondaryClarity?: number | null;
+  secondaryNoteLabel?: string | null;
+  detectorDeltaHz?: number | null;
 };
 
 type DebugReadoutCardProps = {
@@ -40,6 +50,14 @@ function formatPercent(value: number | null | undefined) {
   return `${Math.round(value * 100)}%`;
 }
 
+function formatRms(value: number | null | undefined) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "--";
+  }
+
+  return value.toFixed(4);
+}
+
 function formatCount(value: number | null | undefined) {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return "--";
@@ -57,7 +75,7 @@ function formatText(value: DebugReadoutValue) {
 }
 
 export function DebugReadoutCard({ data }: DebugReadoutCardProps) {
-  const items = [
+  const liveItems = [
     { label: "Audio", value: formatText(data.audioStatus) },
     { label: "Freq", value: formatFrequency(data.frequencyHz) },
     { label: "Note", value: formatText(data.noteLabel) },
@@ -66,6 +84,26 @@ export function DebugReadoutCard({ data }: DebugReadoutCardProps) {
     { label: "Clarity", value: formatPercent(data.clarity) },
     { label: "Samples", value: formatCount(data.sampleCount) },
     { label: "Source", value: formatText(data.source) },
+  ];
+  const comparisonItems = [
+    { label: "Frame RMS", value: formatRms(data.frameRms) },
+    {
+      label: formatText(data.primaryAlgorithm).toUpperCase(),
+      value: `${formatFrequency(data.primaryFrequencyHz)} / ${formatText(data.primaryNoteLabel)}`,
+    },
+    {
+      label: `${formatText(data.primaryAlgorithm).toUpperCase()} clarity`,
+      value: formatPercent(data.primaryClarity),
+    },
+    {
+      label: formatText(data.secondaryAlgorithm).toUpperCase(),
+      value: `${formatFrequency(data.secondaryFrequencyHz)} / ${formatText(data.secondaryNoteLabel)}`,
+    },
+    {
+      label: `${formatText(data.secondaryAlgorithm).toUpperCase()} clarity`,
+      value: formatPercent(data.secondaryClarity),
+    },
+    { label: "Delta", value: formatFrequency(data.detectorDeltaHz) },
   ];
 
   return (
@@ -80,19 +118,36 @@ export function DebugReadoutCard({ data }: DebugReadoutCardProps) {
           Debug Readout
         </h2>
         <p className="debug-readout-description">
-          The panel stays lightweight now and is ready for live detection data
-          once the main thread wires it in.
+          Live frame diagnostics now show the primary YIN path alongside an
+          autocorrelation comparison path for M2 device validation.
         </p>
       </div>
 
-      <dl className="debug-readout-grid">
-        {items.map((item) => (
-          <div key={item.label} className="debug-readout-item">
-            <dt>{item.label}</dt>
-            <dd>{item.value}</dd>
-          </div>
-        ))}
-      </dl>
+      <div className="debug-readout-sections">
+        <div>
+          <h3 className="debug-readout-section-title">Primary Tuner State</h3>
+          <dl className="debug-readout-grid">
+            {liveItems.map((item) => (
+              <div key={item.label} className="debug-readout-item">
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
+        <div>
+          <h3 className="debug-readout-section-title">Detector Comparison</h3>
+          <dl className="debug-readout-grid">
+            {comparisonItems.map((item) => (
+              <div key={item.label} className="debug-readout-item">
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </div>
     </section>
   );
 }

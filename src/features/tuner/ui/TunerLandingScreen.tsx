@@ -172,7 +172,7 @@ export function TunerLandingScreen({
 
   return (
     <PageShell
-      eyebrow="Web M1 Prototype"
+      eyebrow="Web M2 Validation"
       title="Noobty Tune"
       description="\u5728\u6d4f\u89c8\u5668\u91cc\u5feb\u901f\u7ed9\u5409\u4ed6\u8c03\u97f3\u3002\u70b9\u51fb\u5f00\u59cb\u540e\uff0c\u6211\u4eec\u4f1a\u8bf7\u6c42\u9ea6\u514b\u98ce\u6743\u9650\u3002"
     >

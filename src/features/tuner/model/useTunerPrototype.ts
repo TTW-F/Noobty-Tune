@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  AutoCorrelationPitchDetector,
   BrowserMicrophoneManager,
   type MicrophoneSession,
   RollingPitchStabilizer,
@@ -41,12 +42,55 @@ function toTunerEngineError(error: unknown): TunerEngineError {
   };
 }
 
+function toDebugNoteLabel(noteName?: string, octave?: number) {
+  if (!noteName || typeof octave !== "number") {
+    return null;
+  }
+
+  return `${noteName}${octave}`;
+}
+
+export type DetectorComparisonDebug = {
+  readonly frameRms: number | null;
+  readonly primaryAlgorithm: "yin";
+  readonly primaryFrequencyHz: number | null;
+  readonly primaryClarity: number | null;
+  readonly primaryNoteLabel: string | null;
+  readonly secondaryAlgorithm: "autocorrelation";
+  readonly secondaryFrequencyHz: number | null;
+  readonly secondaryClarity: number | null;
+  readonly secondaryNoteLabel: string | null;
+  readonly detectorDeltaHz: number | null;
+};
+
+const INITIAL_DETECTOR_COMPARISON_DEBUG: DetectorComparisonDebug = {
+  frameRms: null,
+  primaryAlgorithm: "yin",
+  primaryFrequencyHz: null,
+  primaryClarity: null,
+  primaryNoteLabel: null,
+  secondaryAlgorithm: "autocorrelation",
+  secondaryFrequencyHz: null,
+  secondaryClarity: null,
+  secondaryNoteLabel: null,
+  detectorDeltaHz: null,
+};
+
 export function useTunerPrototype() {
   const managerRef = useRef<BrowserMicrophoneManager | null>(null);
   const detectorRef = useRef(
     new YinPitchDetector({
       algorithm: "yin",
       probabilityThreshold: 0.82,
+      minFrequencyHz: 70,
+      maxFrequencyHz: 360,
+      rmsThreshold: 0.008,
+    }),
+  );
+  const comparisonDetectorRef = useRef(
+    new AutoCorrelationPitchDetector({
+      algorithm: "autocorrelation",
+      probabilityThreshold: 0.76,
       minFrequencyHz: 70,
       maxFrequencyHz: 360,
       rmsThreshold: 0.008,
@@ -62,6 +106,9 @@ export function useTunerPrototype() {
   );
   const loopHandleRef = useRef<number | null>(null);
   const [state, setState] = useState<TunerState>(INITIAL_TUNER_STATE);
+  const [detectorComparison, setDetectorComparison] = useState<DetectorComparisonDebug>(
+    INITIAL_DETECTOR_COMPARISON_DEBUG,
+  );
 
   if (!managerRef.current) {
     managerRef.current = new BrowserMicrophoneManager();
@@ -87,10 +134,28 @@ export function useTunerPrototype() {
 
   function processAudioFrame(session: MicrophoneSession) {
     const detector = detectorRef.current;
+    const comparisonDetector = comparisonDetectorRef.current;
     const stabilizer = stabilizerRef.current;
     const frame = session.frameCapture.readFrame(Date.now());
     const detectedPitch = detector.detect(frame.samples, frame.sampleRate, frame.timestampMs);
+    const comparisonPitch = comparisonDetector.detect(frame.samples, frame.sampleRate, frame.timestampMs);
     const stabilizedPitch = stabilizer.push(detectedPitch);
+
+    setDetectorComparison({
+      frameRms: frame.rms,
+      primaryAlgorithm: "yin",
+      primaryFrequencyHz: detectedPitch?.frequencyHz ?? null,
+      primaryClarity: detectedPitch?.clarity ?? null,
+      primaryNoteLabel: toDebugNoteLabel(detectedPitch?.noteName, detectedPitch?.octave),
+      secondaryAlgorithm: "autocorrelation",
+      secondaryFrequencyHz: comparisonPitch?.frequencyHz ?? null,
+      secondaryClarity: comparisonPitch?.clarity ?? null,
+      secondaryNoteLabel: toDebugNoteLabel(comparisonPitch?.noteName, comparisonPitch?.octave),
+      detectorDeltaHz:
+        detectedPitch && comparisonPitch
+          ? Math.abs(detectedPitch.frequencyHz - comparisonPitch.frequencyHz)
+          : null,
+    });
 
     setState((previousState) => {
       const activeTarget = resolveActiveTarget(previousState.selection, detectedPitch, stabilizedPitch);
@@ -119,7 +184,9 @@ export function useTunerPrototype() {
   function startProcessingLoop(session: MicrophoneSession) {
     stopProcessingLoop();
     detectorRef.current.reset?.();
+    comparisonDetectorRef.current.reset?.();
     stabilizerRef.current.reset();
+    setDetectorComparison(INITIAL_DETECTOR_COMPARISON_DEBUG);
     loopHandleRef.current = window.setInterval(() => {
       processAudioFrame(session);
     }, 75);
@@ -167,17 +234,20 @@ export function useTunerPrototype() {
     const manager = managerRef.current;
     stopProcessingLoop();
     detectorRef.current.reset?.();
+    comparisonDetectorRef.current.reset?.();
     stabilizerRef.current.reset();
 
     if (manager) {
       await manager.dispose();
     }
 
+    setDetectorComparison(INITIAL_DETECTOR_COMPARISON_DEBUG);
     setState(INITIAL_TUNER_STATE);
   }
 
   return {
     state,
+    detectorComparison,
     startTuning,
     resetSession,
     isStarting: state.uiStatus === "requesting-permission",
