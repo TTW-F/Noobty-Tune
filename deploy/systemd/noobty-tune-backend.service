@@ -1,0 +1,18 @@
+[Unit]
+Description=Noobty Tune Backend Service
+After=network.target
+
+[Service]
+Type=simple
+User=deploy_noobty
+Group=deploy_noobty
+WorkingDirectory=/srv/noobty-tune/shared/backend
+Environment=NODE_ENV=production
+Environment=PORT=3101
+ExecStartPre=/usr/bin/bash -lc '! /usr/bin/ss -lnt | /usr/bin/awk '"'"'{print $4}'"'"' | /usr/bin/grep -q ":${PORT}$"'
+ExecStart=/usr/bin/bash -lc 'if [ -f package.json ]; then /usr/bin/npm ci --omit=dev && /usr/bin/npm run start; else /usr/bin/python3 /srv/noobty-tune/shared/backend_placeholder.py; fi'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

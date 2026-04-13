@@ -1,0 +1,72 @@
+name: Deploy To Server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-noobty-tune
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      APP_NAME: noobty-tune
+      KEEP_RELEASES: "5"
+      BUILD_OUTPUT: dist
+      BUILD_COMMAND: npm ci && npm run build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+        if: ${{ hashFiles('package-lock.json') != '' }}
+
+      - name: Build static artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f package.json ]]; then
+            echo "package.json not found. Update BUILD_COMMAND/BUILD_OUTPUT in workflow first."
+            exit 1
+          fi
+
+          bash -lc "$BUILD_COMMAND"
+
+          if [[ ! -d "$BUILD_OUTPUT" ]]; then
+            echo "Build output directory '$BUILD_OUTPUT' not found."
+            exit 1
+          fi
+
+      - name: Prepare SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p "${{ secrets.DEPLOY_PORT }}" -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_NAME="$(date +%Y%m%d%H%M%S)-${GITHUB_SHA::8}"
+          echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
+          tar -C "$BUILD_OUTPUT" -czf "$RELEASE_NAME.tgz" .
+          scp -P "${{ secrets.DEPLOY_PORT }}" "$RELEASE_NAME.tgz" "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/$RELEASE_NAME.tgz"
+
+      - name: Run safe deploy script
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            "DEPLOY_PATH='${{ secrets.DEPLOY_PATH }}' RELEASE_NAME='$RELEASE_NAME' RELEASE_ARCHIVE='/tmp/$RELEASE_NAME.tgz' KEEP_RELEASES='$KEEP_RELEASES' bash -s" \
+            < deploy/deploy.sh
