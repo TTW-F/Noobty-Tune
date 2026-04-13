@@ -52,6 +52,7 @@
 
 - [文档索引（兼容入口）](./_meta/docs-index-legacy.md)
 - [链接索引表（增量校验基线）](./_meta/link-index.json)
+- [代码到文档映射表](./_meta/code-to-docs-map.md)
 - [开发 Agent 文档契约](./_meta/docs-contract.md)
 - 索引生成脚本：`scripts/generate_docs_link_index.py`
 - [结构合规审计](./_meta/docs-structure-audit-2026-04-13.md)

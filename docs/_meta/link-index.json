@@ -3,6 +3,13 @@
   "scope": "docs/**/*.md (exclude parts: ['_backup'])",
   "documents": [
     {
+      "path": "docs/_meta/code-to-docs-map.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
       "path": "docs/_meta/docs-contract.md",
       "status": "ok",
       "outgoing_links": [],
@@ -495,6 +502,7 @@
         "./_meta/skills-for-this-stage.md",
         "./_meta/docs-index-legacy.md",
         "./_meta/link-index.json",
+        "./_meta/code-to-docs-map.md",
         "./_meta/docs-contract.md",
         "./_meta/docs-structure-audit-2026-04-13.md",
         "./_meta/docs-path-mapping-and-migration-plan-2026-04-13.md",
