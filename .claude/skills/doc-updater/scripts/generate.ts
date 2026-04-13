@@ -402,7 +402,7 @@ async function writeLegacyMirror(grouped: Map<Domain, DomainGroup>, legacyDir: s
     );
   }
 
-  await fs.writeFile(path.join(legacyDir, "INDEX.md"), `${lines.join("\n")}\n", "utf8");
+  await fs.writeFile(path.join(legacyDir, "INDEX.md"), `${lines.join("\n")}\n`, "utf8");
 }
 
 async function writeSummary(projectRoot: string, summary: ReturnType<typeof buildSummary>): Promise<void> {
