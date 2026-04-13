@@ -4,3 +4,4 @@ deploy/keys/
 logs/
 node_modules/
 dist/
+.m1-scaffold/
