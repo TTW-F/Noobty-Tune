@@ -5,6 +5,16 @@
       "source": "vercel-labs/skills",
       "sourceType": "github",
       "computedHash": "645b891da1edbae76ab79c7b088d4e73397464f8396edaf773c0e01971ce75d6"
+    },
+    "ui-ux-pro-max": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "c79c03ce95e35a281f291967a5c8126ab0fef19260682510f2826c46bd75de5d"
+    },
+    "web-audio-api": {
+      "source": "martinholovsky/claude-skills-generator",
+      "sourceType": "github",
+      "computedHash": "5547d3ef64fecb0d0740e16ffe18c0b3379708ef4c4cf016efc0cf50e19cf3e5"
     }
   }
 }
