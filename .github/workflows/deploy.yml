@@ -18,12 +18,13 @@ jobs:
       KEEP_RELEASES: "5"
       BUILD_OUTPUT: dist
       BUILD_COMMAND: npm ci && npm run build
+      SKIP_DEPLOY: "false"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -34,8 +35,9 @@ jobs:
         run: |
           set -euo pipefail
           if [[ ! -f package.json ]]; then
-            echo "package.json not found. Update BUILD_COMMAND/BUILD_OUTPUT in workflow first."
-            exit 1
+            echo "package.json not found. Skip deploy for scaffold stage."
+            echo "SKIP_DEPLOY=true" >> "$GITHUB_ENV"
+            exit 0
           fi
 
           bash -lc "$BUILD_COMMAND"
@@ -46,6 +48,7 @@ jobs:
           fi
 
       - name: Prepare SSH key
+        if: ${{ env.SKIP_DEPLOY != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -55,6 +58,7 @@ jobs:
           ssh-keyscan -p "${{ secrets.DEPLOY_PORT }}" -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Upload release bundle
+        if: ${{ env.SKIP_DEPLOY != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -64,9 +68,14 @@ jobs:
           scp -P "${{ secrets.DEPLOY_PORT }}" "$RELEASE_NAME.tgz" "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/$RELEASE_NAME.tgz"
 
       - name: Run safe deploy script
+        if: ${{ env.SKIP_DEPLOY != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
           ssh -p "${{ secrets.DEPLOY_PORT }}" "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
             "DEPLOY_PATH='${{ secrets.DEPLOY_PATH }}' RELEASE_NAME='$RELEASE_NAME' RELEASE_ARCHIVE='/tmp/$RELEASE_NAME.tgz' KEEP_RELEASES='$KEEP_RELEASES' bash -s" \
             < deploy/deploy.sh
+
+      - name: Deployment summary
+        if: ${{ env.SKIP_DEPLOY == 'true' }}
+        run: echo "Skipped deployment because package.json is not ready yet."
