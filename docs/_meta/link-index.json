@@ -95,6 +95,22 @@
       "last_checked_at": "2026-04-13"
     },
     {
+      "path": "docs/CODEMAPS/frontend.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-13"
+    },
+    {
+      "path": "docs/CODEMAPS/INDEX.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./frontend.md"
+      ],
+      "incoming_count": 0,
+      "last_checked_at": "2026-04-13"
+    },
+    {
       "path": "docs/development/00-overview/codemaps/frontend/app/app.md",
       "status": "ok",
       "outgoing_links": [],

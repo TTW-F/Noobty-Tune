@@ -7,4 +7,4 @@
 ## Modules
 ### `features/tuner/model/useTunerPrototype.ts`
 - Imports: `../../../lib/audio`, `../../../types`, `./tunerState`, `react`
-- Exports: `useTunerPrototype`
+- Exports: `DetectorComparisonDebug`, `useTunerPrototype`
