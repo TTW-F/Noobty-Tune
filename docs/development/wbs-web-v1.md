@@ -282,8 +282,8 @@
 
 ## 12. 与现有文档的对应关系
 
-- 产品目标与范围：`guitar-tuner-web-v1-prd.md`
-- 技术方案：`technical-design-web-v1.md`
-- UI 要求：`ui-spec-web-v1.md`
-- 测试要求：`test-plan-web-v1.md`
+- 产品目标与范围：`product-or-design/prd-web-v1.md`
+- 技术方案：`development/technical-design-web-v1.md`
+- UI 要求：`product-or-design/ui-spec-web-v1.md`
+- 测试要求：`development/test-plan-web-v1.md`
 - 关键决策：`docs/adr/`

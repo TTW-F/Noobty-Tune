@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-04-13",
+  "scope": "docs/**/*.md",
+  "documents": [
+    {
+      "path": "docs/docs-index.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./product-or-design/analysis-web-v1.md",
+        "./product-or-design/prd-web-v1.md",
+        "./technical-design-web-v1.md",
+        "./test-plan-web-v1.md",
+        "./product-or-design/ui-spec-web-v1.md",
+        "./wbs-web-v1.md",
+        "./milestones-web-v1.md",
+        "./implementation-plan-m1.md",
+        "./implementation-checklist-m1.md",
+        "./adr/0001-web-v1-scope.md",
+        "./adr/0002-browser-audio-local-first.md",
+        "./adr/0003-audioworklet-preferred-architecture.md",
+        "./adr/0004-yin-as-default-pitch-detection-candidate.md",
+        "./adr/0005-auto-target-string-for-v1.md",
+        "./deploy.md",
+        "./handover-deployment-status.md",
+        "./git.md",
+        "./skills-for-this-stage.md"
+      ],
+      "incoming_count": 0,
+      "last_checked_at": "2026-04-13"
+    }
+  ]
+}
