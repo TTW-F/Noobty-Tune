@@ -1,9 +1,12 @@
+import type { CSSProperties } from "react";
 import { STANDARD_GUITAR_TUNING } from "../../../lib/music";
 import { DebugReadoutCard, type DebugReadoutData } from "../../../components/DebugReadoutCard";
+import { DeveloperLogConsole } from "../../../components/DeveloperLogConsole";
 import { PageShell } from "../../../components/PageShell";
 import { PrimaryButton } from "../../../components/PrimaryButton";
 import { StatusCard } from "../../../components/StatusCard";
 import type { TunerState, TunerUiStatus } from "../../../types/tuner";
+import type { DeveloperLogEntry } from "../../../lib/logging/developerLogger";
 
 type M1Prompt = {
   key: TunerUiStatus | "permission-prompt";
@@ -12,6 +15,16 @@ type M1Prompt = {
   description: string;
   hint?: string;
   tone?: "neutral" | "info" | "warning" | "error";
+};
+
+type HeroPanelContent = {
+  readonly noteLabel: string;
+  readonly targetLabel: string;
+  readonly centsLabel: string;
+  readonly frequencyLabel: string;
+  readonly instruction: string;
+  readonly meterLabel: string;
+  readonly meterTone: "idle" | "warning" | "active" | "success";
 };
 
 const M1_PROMPTS: M1Prompt[] = [
@@ -129,6 +142,7 @@ type TunerLandingScreenProps = {
   onStart: () => void | Promise<void>;
   onReset: () => void | Promise<void>;
   debugReadout?: DebugReadoutData;
+  developerLogs?: readonly DeveloperLogEntry[];
 };
 
 function getFallbackTargetLabel(state: TunerState) {
@@ -160,15 +174,117 @@ function buildDebugReadout(state: TunerState, override?: DebugReadoutData): Debu
   };
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getInputMeterState(frameRms: number | null | undefined) {
+  const safeRms = typeof frameRms === "number" ? frameRms : 0;
+  const normalized = clamp(safeRms / 0.03, 0, 1);
+
+  if (safeRms <= 0.0008) {
+    return {
+      level: normalized,
+      label: "No microphone input detected. Check the selected input device or system recording source.",
+      tone: "warning" as const,
+    };
+  }
+
+  if (safeRms <= 0.003) {
+    return {
+      level: normalized,
+      label: "Input is very weak. Move the guitar closer or choose the correct microphone.",
+      tone: "idle" as const,
+    };
+  }
+
+  return {
+    level: normalized,
+    label: "Input level looks healthy.",
+    tone: "active" as const,
+  };
+}
+
+function buildHeroPanelContent(state: TunerState, debugReadout: DebugReadoutData): HeroPanelContent {
+  const reading = state.stabilizedPitch ?? state.detectedPitch;
+  const activeTarget = state.activeTarget;
+  const noteLabel =
+    reading?.noteName && typeof reading.octave === "number"
+      ? `${reading.noteName}${reading.octave}`
+      : activeTarget
+        ? `${activeTarget.note}${activeTarget.octave}`
+        : "--";
+  const targetLabel = activeTarget ? `${activeTarget.note}${activeTarget.octave} · String ${activeTarget.label}` : "Auto target";
+  const centsValue = state.deviation?.cents ?? reading?.cents ?? null;
+  const centsLabel =
+    typeof centsValue === "number"
+      ? `${centsValue > 0 ? "+" : ""}${centsValue.toFixed(1)} cent`
+      : "Pluck a single string";
+  const frequencyLabel =
+    typeof reading?.frequencyHz === "number" ? `${reading.frequencyHz.toFixed(2)} Hz` : "Waiting for pitch";
+  const inputMeter = getInputMeterState(debugReadout.frameRms);
+
+  if (state.uiStatus === "in-tune") {
+    return {
+      noteLabel,
+      targetLabel,
+      centsLabel,
+      frequencyLabel,
+      instruction: "In tune. Let the note ring and make tiny adjustments only if the needle drifts.",
+      meterLabel: inputMeter.label,
+      meterTone: "success",
+    };
+  }
+
+  if (state.uiStatus === "no-signal") {
+    return {
+      noteLabel,
+      targetLabel,
+      centsLabel,
+      frequencyLabel,
+      instruction: "We can hear almost nothing useful yet. If you just switched devices, confirm the right microphone is selected.",
+      meterLabel: inputMeter.label,
+      meterTone: inputMeter.tone,
+    };
+  }
+
+  if (state.uiStatus === "detecting" || state.uiStatus === "unstable") {
+    return {
+      noteLabel,
+      targetLabel,
+      centsLabel,
+      frequencyLabel,
+      instruction: "Pluck one string at a time and wait for the indicator to settle before tuning further.",
+      meterLabel: inputMeter.label,
+      meterTone: inputMeter.tone,
+    };
+  }
+
+  return {
+    noteLabel,
+    targetLabel,
+    centsLabel,
+    frequencyLabel,
+    instruction: "Start tuning, then pluck one string clearly. The tuner will lock onto the closest standard guitar string.",
+    meterLabel: inputMeter.label,
+    meterTone: inputMeter.tone,
+  };
+}
+
 export function TunerLandingScreen({
   state,
   isStarting,
   onStart,
   onReset,
   debugReadout,
+  developerLogs = [],
 }: TunerLandingScreenProps) {
   const currentPrompt = getPromptFromState(state);
   const resolvedDebugReadout = buildDebugReadout(state, debugReadout);
+  const heroPanel = buildHeroPanelContent(state, resolvedDebugReadout);
+  const centsValue = state.deviation?.cents ?? null;
+  const needleOffset = typeof centsValue === "number" ? clamp(centsValue, -50, 50) : 0;
+  const inputMeter = getInputMeterState(resolvedDebugReadout.frameRms);
 
   return (
     <PageShell
@@ -183,6 +299,84 @@ export function TunerLandingScreen({
         >
           {"\u97f3\u9891\u4ec5\u5728\u6d4f\u89c8\u5668\u672c\u5730\u5904\u7406\uff0c\u4e0d\u4f1a\u5728\u9875\u9762\u52a0\u8f7d\u65f6\u81ea\u52a8\u8bf7\u6c42\u6743\u9650\u3002"}
         </div>
+
+        <section className="tuner-stage" aria-labelledby="tuner-stage-title">
+          <div className="tuner-stage-header">
+            <div>
+              <p className="tuner-stage-kicker">Live tuner</p>
+              <h2 id="tuner-stage-title" className="tuner-stage-title">
+                Tune by ear, read by glance
+              </h2>
+            </div>
+            <div className={`signal-pill signal-pill--${inputMeter.tone}`}>
+              {inputMeter.level > 0.2 ? "Input active" : "Input weak"}
+            </div>
+          </div>
+
+          <div className="tuner-primary-readout">
+            <div className="note-orb" aria-live="polite">
+              <span className="note-orb-note">{heroPanel.noteLabel}</span>
+              <span className="note-orb-target">{heroPanel.targetLabel}</span>
+            </div>
+
+            <div className="tuner-needle-panel" aria-label="pitch deviation meter">
+              <div className="tuner-direction-row" aria-hidden="true">
+                <span>Flat</span>
+                <span>In tune</span>
+                <span>Sharp</span>
+              </div>
+              <div className="tuner-scale">
+                <div className="tuner-scale-center" />
+                <div
+                  className={`tuner-needle ${state.uiStatus === "in-tune" ? "tuner-needle--success" : ""}`}
+                  style={{ "--needle-offset": `${needleOffset}%` } as CSSProperties}
+                />
+                <div className="tuner-ticks" aria-hidden="true">
+                  {[-50, -25, 0, 25, 50].map((value) => (
+                    <span key={value} className={value === 0 ? "is-center" : undefined} />
+                  ))}
+                </div>
+              </div>
+              <div className="tuner-metric-row">
+                <strong>{heroPanel.centsLabel}</strong>
+                <span>{heroPanel.frequencyLabel}</span>
+              </div>
+            </div>
+          </div>
+
+          <p className="tuner-guidance">{heroPanel.instruction}</p>
+
+          <div className="input-health-panel" role="status" aria-live="polite">
+            <div className="input-health-copy">
+              <p className="input-health-label">Microphone input</p>
+              <p className="input-health-message">{heroPanel.meterLabel}</p>
+            </div>
+            <div className="input-level-track" aria-hidden="true">
+              <span
+                className={`input-level-fill input-level-fill--${inputMeter.tone}`}
+                style={{ width: `${Math.max(inputMeter.level * 100, inputMeter.level > 0 ? 8 : 0)}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="string-target-strip" aria-label="standard tuning targets">
+            {STANDARD_GUITAR_TUNING.map((target) => {
+              const isActive = state.activeTarget?.id === target.id;
+              return (
+                <div
+                  key={target.id}
+                  className={`string-target-pill ${isActive ? "string-target-pill--active" : ""}`}
+                >
+                  <span className="string-target-index">String {target.label}</span>
+                  <strong>
+                    {target.note}
+                    {target.octave}
+                  </strong>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         <PrimaryButton
           aria-describedby="permission-note"
@@ -211,10 +405,7 @@ export function TunerLandingScreen({
           ))}
         </div>
 
-        <div
-          className="status-stack"
-          aria-label="\u8c03\u97f3\u5668\u72b6\u6001\u63d0\u793a"
-        >
+        <div className="status-stack" aria-label="\u8c03\u97f3\u5668\u72b6\u6001\u63d0\u793a">
           <StatusCard
             key={currentPrompt.key}
             label={currentPrompt.label}
@@ -232,7 +423,13 @@ export function TunerLandingScreen({
           />
         </div>
 
-        <DebugReadoutCard data={resolvedDebugReadout} />
+        <details className="developer-tools">
+          <summary>Developer tools</summary>
+          <div className="developer-tools-stack">
+            <DebugReadoutCard data={resolvedDebugReadout} />
+            <DeveloperLogConsole logs={developerLogs} />
+          </div>
+        </details>
 
         {(state.uiStatus === "permission-denied" || state.uiStatus === "error") && (
           <button

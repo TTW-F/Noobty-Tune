@@ -1,7 +1,9 @@
+import { useDeveloperLogs } from "../lib/logging/developerLogger";
 import { useTunerPrototype } from "../features/tuner/model";
 import { TunerLandingScreen } from "../features/tuner/ui/TunerLandingScreen";
 
 export function App() {
+  const logs = useDeveloperLogs();
   const { state, detectorComparison, startTuning, resetSession, isStarting } = useTunerPrototype();
   const reading = state.stabilizedPitch ?? state.detectedPitch;
   const debugReadout = {
@@ -39,6 +41,7 @@ export function App() {
       onStart={startTuning}
       onReset={resetSession}
       debugReadout={debugReadout}
+      developerLogs={logs}
     />
   );
 }

@@ -15,6 +15,15 @@ import {
   resolveActiveTarget,
   resolveDeviation,
 } from "./tunerState";
+import { createScopedLogger } from "../../../lib/logging/developerLogger";
+
+const appLogger = createScopedLogger("app");
+const uiLogger = createScopedLogger("ui");
+const frameLogger = createScopedLogger("frame");
+const detectorLogger = createScopedLogger("detector");
+const stabilizerLogger = createScopedLogger("stabilizer");
+const SIGNAL_PRESENT_RMS = 0.003;
+const SIGNAL_PRESENT_PEAK = 0.03;
 
 function toTunerEngineError(error: unknown): TunerEngineError {
   if (
@@ -77,7 +86,7 @@ const INITIAL_DETECTOR_COMPARISON_DEBUG: DetectorComparisonDebug = {
 };
 
 export function useTunerPrototype() {
-  const managerRef = useRef<BrowserMicrophoneManager | null>(null);
+  const managerRef = useRef(new BrowserMicrophoneManager());
   const detectorRef = useRef(
     new YinPitchDetector({
       algorithm: "yin",
@@ -109,9 +118,13 @@ export function useTunerPrototype() {
   const [detectorComparison, setDetectorComparison] = useState<DetectorComparisonDebug>(
     INITIAL_DETECTOR_COMPARISON_DEBUG,
   );
+  const previousUiStatusRef = useRef<TunerState["uiStatus"]>(INITIAL_TUNER_STATE.uiStatus);
 
-  if (!managerRef.current) {
-    managerRef.current = new BrowserMicrophoneManager();
+  function stopProcessingLoop() {
+    if (loopHandleRef.current !== null) {
+      window.clearInterval(loopHandleRef.current);
+      loopHandleRef.current = null;
+    }
   }
 
   useEffect(() => {
@@ -125,12 +138,19 @@ export function useTunerPrototype() {
     };
   }, []);
 
-  function stopProcessingLoop() {
-    if (loopHandleRef.current !== null) {
-      window.clearInterval(loopHandleRef.current);
-      loopHandleRef.current = null;
+  useEffect(() => {
+    if (previousUiStatusRef.current === state.uiStatus) {
+      return;
     }
-  }
+
+    uiLogger.info("UI state changed", "Tuner UI status transitioned.", {
+      meta: {
+        from: previousUiStatusRef.current,
+        to: state.uiStatus,
+      },
+    });
+    previousUiStatusRef.current = state.uiStatus;
+  }, [state.uiStatus]);
 
   function processAudioFrame(session: MicrophoneSession) {
     const detector = detectorRef.current;
@@ -140,6 +160,7 @@ export function useTunerPrototype() {
     const detectedPitch = detector.detect(frame.samples, frame.sampleRate, frame.timestampMs);
     const comparisonPitch = comparisonDetector.detect(frame.samples, frame.sampleRate, frame.timestampMs);
     const stabilizedPitch = stabilizer.push(detectedPitch);
+    const signalPresent = frame.rms >= SIGNAL_PRESENT_RMS || frame.peak >= SIGNAL_PRESENT_PEAK;
 
     setDetectorComparison({
       frameRms: frame.rms,
@@ -157,11 +178,77 @@ export function useTunerPrototype() {
           : null,
     });
 
+    frameLogger.debug("Frame summary", "Sampled microphone frame metrics for live diagnostics.", {
+      throttleKey: "frame-summary",
+      throttleMs: 900,
+      meta: {
+        rms: Number(frame.rms.toFixed(5)),
+        peak: Number(frame.peak.toFixed(5)),
+        sampleRate: frame.sampleRate,
+        signalPresent,
+      },
+    });
+
+    if (!detectedPitch && signalPresent) {
+      detectorLogger.warn("Signal without pitch", "Audio energy is present, but no detector produced a valid pitch.", {
+        throttleKey: "signal-without-pitch",
+        throttleMs: 1200,
+        meta: {
+          rms: Number(frame.rms.toFixed(5)),
+          peak: Number(frame.peak.toFixed(5)),
+          yin: "null",
+          autocorrelation: comparisonPitch ? Number(comparisonPitch.frequencyHz.toFixed(2)) : null,
+        },
+      });
+    }
+
+    if (detectedPitch) {
+      detectorLogger.success("Primary detector hit", "YIN produced a candidate pitch.", {
+        throttleKey: "primary-detector-hit",
+        throttleMs: 700,
+        meta: {
+          frequencyHz: Number(detectedPitch.frequencyHz.toFixed(2)),
+          clarity: Number(detectedPitch.clarity.toFixed(3)),
+          note: toDebugNoteLabel(detectedPitch.noteName, detectedPitch.octave),
+        },
+      });
+    }
+
+    if (detectedPitch && comparisonPitch) {
+      const deltaHz = Math.abs(detectedPitch.frequencyHz - comparisonPitch.frequencyHz);
+      if (deltaHz >= 8) {
+        detectorLogger.warn("Detector disagreement", "YIN and autocorrelation disagree beyond the diagnostic threshold.", {
+          throttleKey: "detector-disagreement",
+          throttleMs: 1200,
+          meta: {
+            yinHz: Number(detectedPitch.frequencyHz.toFixed(2)),
+            autocorrelationHz: Number(comparisonPitch.frequencyHz.toFixed(2)),
+            deltaHz: Number(deltaHz.toFixed(2)),
+          },
+        });
+      }
+    }
+
+    if (stabilizedPitch?.stable) {
+      stabilizerLogger.success("Stable pitch window", "Rolling stabilizer marked the current pitch window as stable.", {
+        throttleKey: "stable-pitch-window",
+        throttleMs: 1000,
+        meta: {
+          frequencyHz: Number(stabilizedPitch.frequencyHz.toFixed(2)),
+          cents: Number(stabilizedPitch.cents?.toFixed(1) ?? 0),
+          sampleCount: stabilizedPitch.sampleCount,
+          target: stabilizedPitch.target?.id ?? "auto",
+        },
+      });
+    }
+
     setState((previousState) => {
       const activeTarget = resolveActiveTarget(previousState.selection, detectedPitch, stabilizedPitch);
       const deviation = resolveDeviation(activeTarget, stabilizedPitch, detectedPitch);
       const uiStatus = !detectedPitch
-        ? "listening"
+        ? signalPresent
+          ? "no-signal"
+          : "listening"
         : stabilizedPitch?.stable
           ? deviation?.direction === "in-tune"
             ? "in-tune"
@@ -195,10 +282,6 @@ export function useTunerPrototype() {
   async function startTuning() {
     const manager = managerRef.current;
 
-    if (!manager) {
-      return;
-    }
-
     setState(
       createTunerStateSnapshot({
         audioStatus: "requesting-permission",
@@ -206,20 +289,37 @@ export function useTunerPrototype() {
         lastError: null,
       }),
     );
+    appLogger.info("Start tuning", "User requested the tuner session to start.");
 
     try {
       const session = await manager.start();
       startProcessingLoop(session);
       setState(createListeningState());
+      appLogger.success("Tuner listening", "Tuner entered the active listening loop.", {
+        meta: {
+          sampleRate: session.audioContext.sampleRate,
+          audioState: session.audioContext.state,
+        },
+      });
     } catch (error) {
       stopProcessingLoop();
       const tunerError = toTunerEngineError(error);
 
       if (tunerError.code === "NotAllowedError") {
+        appLogger.error("Permission denied", "User denied microphone permission.", {
+          meta: {
+            code: tunerError.code,
+          },
+        });
         setState(createPermissionDeniedState(tunerError));
         return;
       }
 
+      appLogger.error("Start failed", "Tuner failed to start listening.", {
+        meta: {
+          code: tunerError.code,
+        },
+      });
       setState(
         createTunerStateSnapshot({
           audioStatus: "error",
@@ -241,6 +341,7 @@ export function useTunerPrototype() {
       await manager.dispose();
     }
 
+    appLogger.info("Session reset", "Tuner session was reset and returned to idle.");
     setDetectorComparison(INITIAL_DETECTOR_COMPARISON_DEBUG);
     setState(INITIAL_TUNER_STATE);
   }
