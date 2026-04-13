@@ -185,7 +185,7 @@ docs/
 
 ```bash
 # 生成 codemap（优先使用仓库脚本）
-npx tsx scripts/codemaps/generate.ts
+npx tsx .claude/skills/doc-updater/scripts/generate.ts
 
 # 依赖图（可选）
 npx madge --image graph.svg src/

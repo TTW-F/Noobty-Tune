@@ -9,9 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "docs:index": "python scripts/generate_docs_link_index.py",
-    "docs:codemap": "tsx scripts/codemaps/generate.ts",
-    "docs:codemap:legacy": "tsx scripts/codemaps/generate.ts --mirror-legacy",
-    "docs:sync": "tsx scripts/docs/sync.ts"
+    "docs:codemap": "tsx .claude/skills/doc-updater/scripts/generate.ts",
+    "docs:codemap:legacy": "tsx .claude/skills/doc-updater/scripts/generate.ts --mirror-legacy",
+    "docs:sync": "tsx .claude/skills/doc-updater/scripts/sync.ts"
   },
   "dependencies": {
     "pitchfinder": "^2.3.4",
