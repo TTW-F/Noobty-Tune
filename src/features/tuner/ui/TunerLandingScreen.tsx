@@ -204,6 +204,17 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function mapCentsToNeedleOffset(cents: number | null) {
+  if (typeof cents !== "number" || Number.isNaN(cents)) {
+    return 0;
+  }
+
+  // Expand the visually important tuning zone so small pitch errors are readable.
+  const normalized = clamp(cents / 15, -1, 1);
+  const eased = Math.sign(normalized) * Math.sqrt(Math.abs(normalized));
+  return eased * 42;
+}
+
 function getInputMeterState(frameRms: number | null | undefined) {
   const safeRms = typeof frameRms === "number" ? frameRms : 0;
   const normalized = clamp(safeRms / 0.03, 0, 1);
@@ -399,6 +410,7 @@ export function TunerLandingScreen({
   const resolvedDebugReadout = buildDebugReadout(state, debugReadout);
   const heroPanel = buildHeroPanelContent(state, resolvedDebugReadout);
   const liveReading = state.stabilizedPitch ?? state.detectedPitch;
+  const hasActivePitch = Boolean(liveReading && typeof liveReading.frequencyHz === "number");
   const detectedNoteLabel =
     liveReading?.noteName && typeof liveReading.octave === "number"
       ? `${liveReading.noteName}${liveReading.octave}`
@@ -421,7 +433,7 @@ export function TunerLandingScreen({
   const canResetSession =
     state.audioStatus !== "idle" && state.audioStatus !== "requesting-permission";
   const centsValue = state.deviation?.cents ?? null;
-  const needleOffset = typeof centsValue === "number" ? clamp(centsValue, -50, 50) : 0;
+  const needleOffset = mapCentsToNeedleOffset(centsValue);
   const inputMeter = getInputMeterState(resolvedDebugReadout.frameRms);
   const rescueCard = buildRescueCardContent(state, resolvedDebugReadout.frameRms, activeInputLabel);
   const directionLabel =
@@ -495,9 +507,15 @@ export function TunerLandingScreen({
               <div className="tuner-scale">
                 <div className="tuner-scale-center" />
                 <div
-                  className={`tuner-needle ${state.uiStatus === "in-tune" ? "tuner-needle--success" : ""}`}
+                  className={`tuner-needle ${state.uiStatus === "in-tune" ? "tuner-needle--success" : ""} ${!hasActivePitch ? "tuner-needle--idle" : ""}`}
                   style={{ "--needle-offset": `${needleOffset}%` } as CSSProperties}
                 />
+                {!hasActivePitch ? (
+                  <div className="tuner-scale-overlay" aria-live="polite">
+                    <strong>No pitch lock yet</strong>
+                    <span>Pluck one string cleanly and let it ring</span>
+                  </div>
+                ) : null}
                 <div className="tuner-ticks" aria-hidden="true">
                   {[-50, -25, 0, 25, 50].map((value) => (
                     <span key={value} className={value === 0 ? "is-center" : undefined} />
@@ -505,11 +523,11 @@ export function TunerLandingScreen({
                 </div>
               </div>
               <div className="tuner-metric-row">
-                <strong>{heroPanel.centsLabel}</strong>
-                <span>{heroPanel.frequencyLabel}</span>
+                <strong>{hasActivePitch ? heroPanel.centsLabel : "Waiting for cents"}</strong>
+                <span>{hasActivePitch ? heroPanel.frequencyLabel : "Waiting for pitch"}</span>
               </div>
               <div className={`direction-chip direction-chip--${state.deviation?.direction ?? "idle"}`}>
-                {directionLabel}
+                {hasActivePitch ? directionLabel : "No pitch lock"}
               </div>
               <div className="tuner-readout-strip" aria-label="live tuner details">
                 <div className="tuner-readout-card">

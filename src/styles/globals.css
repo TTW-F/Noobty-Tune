@@ -284,34 +284,77 @@ button {
   height: 78px;
   border-radius: 22px;
   background:
-    linear-gradient(90deg, rgba(255, 107, 107, 0.14), rgba(73, 209, 125, 0.18), rgba(255, 107, 107, 0.14));
+    linear-gradient(
+      90deg,
+      rgba(255, 107, 107, 0.16) 0%,
+      rgba(255, 107, 107, 0.12) 22%,
+      rgba(73, 209, 125, 0.12) 38%,
+      rgba(73, 209, 125, 0.22) 50%,
+      rgba(73, 209, 125, 0.12) 62%,
+      rgba(255, 107, 107, 0.12) 78%,
+      rgba(255, 107, 107, 0.16) 100%
+    );
   overflow: hidden;
 }
 
 .tuner-scale-center {
   position: absolute;
-  inset: 0;
-  width: 2px;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 14%;
   margin: 0 auto;
-  background: rgba(248, 250, 252, 0.8);
+  transform: translateX(-50%);
+  background: rgba(73, 209, 125, 0.12);
+  border-left: 2px solid rgba(248, 250, 252, 0.78);
+  border-right: 2px solid rgba(248, 250, 252, 0.22);
 }
 
 .tuner-needle {
   --needle-offset: 0%;
   position: absolute;
   left: 50%;
-  bottom: 10px;
-  width: 4px;
-  height: 58px;
+  bottom: 8px;
+  width: 8px;
+  height: 62px;
   border-radius: 999px;
   background: linear-gradient(180deg, #ffd277 0%, #ff8a3d 100%);
-  box-shadow: 0 0 24px rgba(255, 138, 61, 0.35);
-  transform: translateX(var(--needle-offset));
+  box-shadow:
+    0 0 24px rgba(255, 138, 61, 0.35),
+    0 0 0 3px rgba(255, 255, 255, 0.08);
+  transform: translateX(var(--needle-offset)) translateX(-50%);
+}
+
+.tuner-needle--idle {
+  opacity: 0.45;
+  box-shadow: none;
 }
 
 .tuner-needle--success {
   background: linear-gradient(180deg, #a4f1c0 0%, #49d17d 100%);
   box-shadow: 0 0 24px rgba(73, 209, 125, 0.35);
+}
+
+.tuner-scale-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(8, 16, 29, 0.1), rgba(8, 16, 29, 0.3));
+  color: #dbeafe;
+  pointer-events: none;
+}
+
+.tuner-scale-overlay strong {
+  font-size: 0.95rem;
+  color: #f8fafc;
+}
+
+.tuner-scale-overlay span {
+  font-size: 0.82rem;
+  color: var(--muted);
 }
 
 .tuner-ticks {
@@ -325,11 +368,11 @@ button {
 .tuner-ticks span {
   width: 1px;
   height: 100%;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .tuner-ticks .is-center {
-  background: transparent;
+  opacity: 0;
 }
 
 .tuner-metric-row strong {
