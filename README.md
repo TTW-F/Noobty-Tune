@@ -5,6 +5,10 @@
 </p>
 
 <p align="center">
+  <strong>Language:</strong> <a href="#中文概览">中文</a> | <a href="#english-summary">English</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/TTW-F/Noobty-Tune/actions/workflows/deploy.yml">
     <img alt="CI" src="https://github.com/TTW-F/Noobty-Tune/actions/workflows/deploy.yml/badge.svg">
   </a>
@@ -34,6 +38,13 @@ Noobty Tune 是一个面向浏览器的调音器项目，专注于：
 - 可演进的工程结构与文档体系
 
 ---
+
+## 中文概览
+
+- **项目定位**：本地优先（Local-first）的浏览器调音器
+- **核心价值**：低延迟反馈、可持续演进、文档与代码事实对齐
+- **当前阶段**：Web V1 持续迭代中
+- **适合人群**：调音用户、Web Audio 学习者、前端工程实践者
 
 ## TL;DR
 
