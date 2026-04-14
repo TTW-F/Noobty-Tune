@@ -47,9 +47,10 @@ Practical rule:
 
 These items still block confident V1 sign-off.
 
-- Real-device validation from low E to high E
+- Short-pluck validation from low E to high E
+- Moderate-noise validation, especially `E2`, `A2`, and `E4`
 - Threshold tuning based on actual test results
-- Verification of weak-signal, noisy-room, and short-pluck scenarios
+- Verification of weak-signal and noisy-room behavior after the latest UI readability changes
 - Decision on whether autocorrelation remains only diagnostic or needs further action
 - M3 core-loop completion judgment
 - M4 usability readiness judgment
@@ -67,6 +68,6 @@ Until V1 sign-off:
 ## Suggested Next Work Order
 
 1. Finish real-device validation logs.
-2. Tune thresholds and stabilization using those results.
-3. Close the V1 automatic-flow usability and failure-state review.
-4. Decide whether manual mode stays visible, hidden, or deferred in the release path.
+2. Run short-pluck and moderate-noise follow-up validation.
+3. Tune thresholds and stabilization using those results.
+4. Close the V1 automatic-flow usability and failure-state review.

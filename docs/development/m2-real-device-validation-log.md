@@ -155,12 +155,12 @@ Use this table to keep the latest overall status visible.
 
 | String | Quiet sustain | Quiet short pluck | Noise sustain | Main issue | Status |
 | --- | --- | --- | --- | --- | --- |
-| E2 | pending | pending | pending | - | pending |
-| A2 | pending | pending | pending | - | pending |
-| D3 | pending | pending | pending | - | pending |
-| G3 | pending | pending | pending | - | pending |
-| B3 | pending | pending | pending | - | pending |
-| E4 | pending | pending | pending | - | pending |
+| E2 | pass | pending | pending | UI readability still being tuned | first-pass complete |
+| A2 | pass | pending | pending | UI readability still being tuned | first-pass complete |
+| D3 | pass | pending | pending | UI readability still being tuned | first-pass complete |
+| G3 | pass | pending | pending | UI readability still being tuned | first-pass complete |
+| B3 | pass | pending | pending | UI readability still being tuned | first-pass complete |
+| E4 | pass | pending | pending | UI readability still being tuned | first-pass complete |
 
 ## 7. Parameter Tuning Notes
 
@@ -216,7 +216,7 @@ Copy this after each validation batch.
 
 Mark these after each validation round.
 
-- [ ] first real-device pass completed for `low E` to `high E`
+- [x] first real-device pass completed for `low E` to `high E`
 - [ ] noisy-environment behavior documented
 - [ ] short-pluck behavior documented
 - [ ] need for `autocorrelation` promotion decided
@@ -229,3 +229,35 @@ At the end of the current M2 round, record one explicit decision:
 - `M2 still in progress`
 - `M2 first-pass complete, move to M3 closure work`
 - `M2 blocked, redesign or detector strategy review required`
+
+## 10. Latest Recorded Outcome
+
+### Validation Round Summary
+
+- Date: `2026-04-14`
+- Batch: `Quiet room sustain, low E to high E`
+- Scope covered: first real-device pass across all six standard strings
+- Main passes:
+  - corresponding string could be recognized from `E2` to `E4`
+  - no octave crossing observed in the first pass
+  - automatic target-string flow was usable across the six strings
+- Main failures:
+  - front-end observability was initially too weak to judge live pitch confidence comfortably
+  - tuner gauge readability required UI improvement work before confident follow-up validation
+- Strings needing re-run:
+  - `E2 A2 D3 G3 B3 E4` for short-pluck and noise scenarios
+- Recommended code/config change:
+  - improve tuner gauge readability
+  - improve live pitch observability in the main panel
+- Can M2 continue without change: `yes`
+- Next validation step:
+  - run quiet short-pluck validation
+  - run moderate-noise sustain validation
+  - confirm whether current UI changes are sufficient for confident manual verification
+
+### Stage Decision
+
+- Current decision: `M2 first-pass complete, move to M3 closure work`
+- Interpretation:
+  - the project is no longer blocked on basic six-string real-device feasibility
+  - current priority shifts to M3 loop clarity and M4 usability-oriented validation
