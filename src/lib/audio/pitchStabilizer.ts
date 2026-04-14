@@ -1,4 +1,4 @@
-import type { PitchReading, PitchStabilizer, StabilizedPitchReading } from "../../types/tuner";
+import type { PitchReading, PitchStabilizer, StabilizedPitchReading, TuningTarget } from "../../types/tuner";
 import { createDeviationFromCents, findClosestTuningTarget, getCentsOffset } from "../music";
 
 export interface PitchStabilizerOptions {

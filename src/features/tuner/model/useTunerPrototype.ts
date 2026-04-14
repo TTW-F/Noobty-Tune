@@ -25,6 +25,8 @@ const uiLogger = createScopedLogger("ui");
 const frameLogger = createScopedLogger("frame");
 const detectorLogger = createScopedLogger("detector");
 const stabilizerLogger = createScopedLogger("stabilizer");
+const WEAK_SIGNAL_RMS = 0.0008;
+const WEAK_SIGNAL_PEAK = 0.01;
 const SIGNAL_PRESENT_RMS = 0.003;
 const SIGNAL_PRESENT_PEAK = 0.03;
 
@@ -194,6 +196,7 @@ export function useTunerPrototype() {
     const detectedPitch = detector.detect(frame.samples, frame.sampleRate, frame.timestampMs);
     const comparisonPitch = comparisonDetector.detect(frame.samples, frame.sampleRate, frame.timestampMs);
     const stabilizedPitch = stabilizer.push(detectedPitch, targetHint);
+    const weakSignalPresent = frame.rms >= WEAK_SIGNAL_RMS || frame.peak >= WEAK_SIGNAL_PEAK;
     const signalPresent = frame.rms >= SIGNAL_PRESENT_RMS || frame.peak >= SIGNAL_PRESENT_PEAK;
 
     setDetectorComparison({
@@ -282,7 +285,9 @@ export function useTunerPrototype() {
       const uiStatus = !detectedPitch
         ? signalPresent
           ? "no-signal"
-          : "listening"
+          : weakSignalPresent
+            ? "signal-weak"
+            : "listening"
         : stabilizedPitch?.stable
           ? deviation?.direction === "in-tune"
             ? "in-tune"

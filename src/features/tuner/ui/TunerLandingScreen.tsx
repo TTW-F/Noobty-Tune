@@ -93,10 +93,20 @@ function getPromptFromState(state: TunerState): M1Prompt {
       return {
         key: "no-signal",
         label: "\u5f53\u524d\u72b6\u6001",
-        title: "\u6682\u672a\u68c0\u6d4b\u5230\u6709\u6548\u97f3\u9ad8",
+        title: "\u6709\u8f93\u5165\uff0c\u4f46\u8fd8\u65e0\u6cd5\u9501\u5b9a\u97f3\u9ad8",
         description:
-          "\u9875\u9762\u5df2\u5728\u6301\u7eed\u91c7\u6837\uff0c\u4f46\u73b0\u5728\u7684\u97f3\u9891\u4fe1\u53f7\u8fd8\u4e0d\u8db3\u4ee5\u7ed9\u51fa\u7a33\u5b9a\u7ed3\u679c\u3002",
-        hint: "\u8bf7\u5728\u5b89\u9759\u73af\u5883\u4e2d\u5355\u72ec\u62e8\u5f26\uff0c\u5e76\u7a0d\u5fae\u5ef6\u957f\u5f26\u7684\u5ef6\u97f3\u3002",
+          "\u9875\u9762\u5df2\u7ecf\u542c\u5230\u6bd4\u8f83\u660e\u663e\u7684\u58f0\u97f3\uff0c\u4f46\u8fd9\u4e2a\u65f6\u523b\u8fd8\u4e0d\u8db3\u4ee5\u7a33\u5b9a\u89e3\u51fa\u5355\u97f3\u97f3\u9ad8\u3002",
+        hint: "\u5c3d\u91cf\u53ea\u62e8\u4e00\u6839\u5f26\uff0c\u907f\u514d\u540c\u65f6\u5f15\u5165\u73af\u5883\u566a\u58f0\u6216\u5176\u4ed6\u5f26\u7684\u5171\u632f\u3002",
+        tone: "warning",
+      };
+    case "signal-weak":
+      return {
+        key: "signal-weak",
+        label: "\u5f53\u524d\u72b6\u6001",
+        title: "\u5df2\u542c\u5230\u5fae\u5f31\u8f93\u5165",
+        description:
+          "\u9ea6\u514b\u98ce\u5df2\u7ecf\u6536\u5230\u4e00\u70b9\u58f0\u97f3\uff0c\u4f46\u8fd8\u4e0d\u591f\u5f3a\uff0c\u56e0\u6b64\u5f88\u96be\u5feb\u901f\u9501\u5b9a\u97f3\u9ad8\u3002",
+        hint: "\u628a\u5409\u4ed6\u66f4\u9760\u8fd1\u9ea6\u514b\u98ce\uff0c\u6216\u8005\u62e8\u5f26\u66f4\u6e05\u695a\u3001\u5ef6\u97f3\u7a0d\u5fae\u66f4\u957f\u4e00\u70b9\u3002",
         tone: "warning",
       };
     case "detecting":
@@ -258,7 +268,19 @@ function buildHeroPanelContent(state: TunerState, debugReadout: DebugReadoutData
       targetLabel: resolvedTargetLabel,
       centsLabel,
       frequencyLabel,
-      instruction: "We can hear almost nothing useful yet. If you just switched devices, confirm the right microphone is selected.",
+      instruction: "We can hear something, but it is still too messy for a clean pitch lock. Pluck only one string and reduce extra noise.",
+      meterLabel: inputMeter.label,
+      meterTone: inputMeter.tone,
+    };
+  }
+
+  if (state.uiStatus === "signal-weak") {
+    return {
+      noteLabel,
+      targetLabel: resolvedTargetLabel,
+      centsLabel,
+      frequencyLabel,
+      instruction: "A little input is getting through, but not enough to tune comfortably yet. Move closer and pluck more clearly.",
       meterLabel: inputMeter.label,
       meterTone: inputMeter.tone,
     };
@@ -335,6 +357,20 @@ function buildRescueCardContent(
     };
   }
 
+  if (state.uiStatus === "no-signal") {
+    return {
+      show: true,
+      tone: "warning",
+      title: "Sound is coming in, but the pitch is unclear",
+      description: "The tuner hears energy, yet the current note is too noisy or too blended to resolve into one stable pitch.",
+      steps: [
+        "Mute the other strings before plucking again.",
+        "Let one note ring by itself instead of strumming.",
+        "If the room is noisy, move closer to the microphone or change input devices.",
+      ],
+    };
+  }
+
   return {
     show: false,
     tone: "info",
@@ -362,6 +398,10 @@ export function TunerLandingScreen({
   const currentPrompt = getPromptFromState(state);
   const resolvedDebugReadout = buildDebugReadout(state, debugReadout);
   const heroPanel = buildHeroPanelContent(state, resolvedDebugReadout);
+  const isListening =
+    state.audioStatus === "listening" || state.audioStatus === "ready" || state.audioStatus === "suspended";
+  const canResetSession =
+    state.audioStatus !== "idle" && state.audioStatus !== "requesting-permission";
   const centsValue = state.deviation?.cents ?? null;
   const needleOffset = typeof centsValue === "number" ? clamp(centsValue, -50, 50) : 0;
   const inputMeter = getInputMeterState(resolvedDebugReadout.frameRms);
@@ -587,16 +627,34 @@ export function TunerLandingScreen({
           </div>
         </section>
 
-        <PrimaryButton
-          aria-describedby="permission-note"
-          className="tuner-launch-button"
-          disabled={isStarting}
-          onClick={() => {
-            void onStart();
-          }}
-        >
-          {isStarting ? "\u8bf7\u6c42\u6743\u9650\u4e2d..." : "\u5f00\u59cb\u8c03\u97f3"}
-        </PrimaryButton>
+        <div className="primary-actions">
+          <PrimaryButton
+            aria-describedby="permission-note"
+            className="tuner-launch-button"
+            disabled={isStarting || isListening}
+            onClick={() => {
+              void onStart();
+            }}
+          >
+            {isStarting
+              ? "\u8bf7\u6c42\u6743\u9650\u4e2d..."
+              : isListening
+                ? "\u6b63\u5728\u76d1\u542c"
+                : "\u5f00\u59cb\u8c03\u97f3"}
+          </PrimaryButton>
+
+          {canResetSession ? (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => {
+                void onReset();
+              }}
+            >
+              {"\u91cd\u7f6e\u4f1a\u8bdd"}
+            </button>
+          ) : null}
+        </div>
 
         <p id="permission-note" className="permission-note">
           {"\u4ec5\u5728\u4f60\u4e3b\u52a8\u70b9\u51fb\u540e\u8bf7\u6c42\u9ea6\u514b\u98ce\u6743\u9650\u3002\u6388\u6743\u6210\u529f\u540e\uff0c\u4f1a\u8fdb\u5165\u76d1\u542c\u51c6\u5907\u72b6\u6001\u3002"}
@@ -639,18 +697,6 @@ export function TunerLandingScreen({
             <DeveloperLogConsole logs={developerLogs} />
           </div>
         </details>
-
-        {(state.uiStatus === "permission-denied" || state.uiStatus === "error") && (
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={() => {
-              void onReset();
-            }}
-          >
-            {"\u91cd\u7f6e\u72b6\u6001"}
-          </button>
-        )}
       </div>
     </PageShell>
   );

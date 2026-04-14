@@ -124,15 +124,7 @@ export class BrowserMicrophoneManager implements MicrophoneManager {
     });
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: this.preferredInputDeviceId ? { exact: this.preferredInputDeviceId } : undefined,
-          autoGainControl: false,
-          echoCancellation: false,
-          noiseSuppression: false,
-        },
-        video: false,
-      });
+      const stream = await this.requestPreferredInputStream();
 
       this.status = "initializing-audio";
       permissionLogger.success("Permission granted", "Microphone access was granted by the browser.");
@@ -181,6 +173,38 @@ export class BrowserMicrophoneManager implements MicrophoneManager {
       });
 
       throw toTunerEngineError(error);
+    }
+  }
+
+  private async requestPreferredInputStream(): Promise<MediaStream> {
+    const preferredDeviceId = this.preferredInputDeviceId;
+
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        audio: createAudioConstraints(preferredDeviceId),
+        video: false,
+      });
+    } catch (error) {
+      if (!shouldRetryWithDefaultDevice(error, preferredDeviceId)) {
+        throw error;
+      }
+
+      audioLogger.warn(
+        "Preferred input unavailable",
+        "The saved microphone input could not be opened. Falling back to the browser default input.",
+        {
+          meta: {
+            preferredDeviceId,
+            code: error instanceof DOMException ? error.name : "unknown-error",
+          },
+        },
+      );
+
+      this.preferredInputDeviceId = null;
+      return navigator.mediaDevices.getUserMedia({
+        audio: createAudioConstraints(null),
+        video: false,
+      });
     }
   }
 
@@ -258,6 +282,46 @@ export class BrowserMicrophoneManager implements MicrophoneManager {
 
 function toTunerEngineError(error: unknown): TunerEngineError {
   if (error instanceof DOMException) {
+    if (error.name === "NotAllowedError") {
+      return {
+        code: error.name,
+        message: "Microphone access was blocked. Allow microphone permission in the browser and try again.",
+        recoverable: true,
+      };
+    }
+
+    if (error.name === "NotFoundError") {
+      return {
+        code: error.name,
+        message: "No microphone input is available right now. Connect or enable a recording device and try again.",
+        recoverable: true,
+      };
+    }
+
+    if (error.name === "NotReadableError") {
+      return {
+        code: error.name,
+        message: "The microphone is busy or unavailable. Close other apps using it, then try again.",
+        recoverable: false,
+      };
+    }
+
+    if (error.name === "OverconstrainedError") {
+      return {
+        code: error.name,
+        message: "The selected microphone is no longer available. Refresh the input list and choose another device.",
+        recoverable: true,
+      };
+    }
+
+    if (error.name === "NotSupportedError") {
+      return {
+        code: error.name,
+        message: "This browser does not support the microphone features required by the tuner.",
+        recoverable: false,
+      };
+    }
+
     return {
       code: error.name,
       message: error.message || "Failed to access microphone.",
@@ -278,4 +342,21 @@ function toTunerEngineError(error: unknown): TunerEngineError {
     message: "Failed to access microphone.",
     recoverable: true,
   };
+}
+
+function createAudioConstraints(deviceId: string | null): MediaTrackConstraints {
+  return {
+    deviceId: deviceId ? { exact: deviceId } : undefined,
+    autoGainControl: false,
+    echoCancellation: false,
+    noiseSuppression: false,
+  };
+}
+
+function shouldRetryWithDefaultDevice(error: unknown, preferredDeviceId: string | null): boolean {
+  if (!preferredDeviceId || !(error instanceof DOMException)) {
+    return false;
+  }
+
+  return error.name === "NotFoundError" || error.name === "OverconstrainedError";
 }

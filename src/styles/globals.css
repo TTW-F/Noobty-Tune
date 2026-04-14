@@ -686,6 +686,21 @@ button {
   outline-offset: 3px;
 }
 
+.primary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.primary-actions .primary-button {
+  flex: 1 1 220px;
+}
+
+.primary-actions .secondary-button {
+  width: auto;
+}
+
 .permission-note {
   margin: 0;
   font-size: 0.95rem;

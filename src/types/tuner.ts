@@ -26,6 +26,7 @@ export type TunerUiStatus =
   | "requesting-permission"
   | "permission-denied"
   | "listening"
+  | "signal-weak"
   | "no-signal"
   | "detecting"
   | "unstable"
