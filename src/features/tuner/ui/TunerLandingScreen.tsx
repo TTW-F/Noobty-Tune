@@ -444,6 +444,28 @@ export function TunerLandingScreen({
         : state.uiStatus === "in-tune"
           ? "Perfect"
           : "Listening";
+  const noteMatchesTarget = hasActivePitch && detectedNoteLabel === targetNoteLabel;
+  const closenessPercent =
+    typeof centsValue === "number" ? Math.round((1 - clamp(Math.abs(centsValue) / 25, 0, 1)) * 100) : 0;
+  const tuningCoachTitle = !hasActivePitch
+    ? "No stable pitch yet"
+    : !noteMatchesTarget
+      ? "You are on a different note than the current target"
+      : state.uiStatus === "in-tune"
+        ? "This string is inside the tune window"
+        : state.deviation?.direction === "flat"
+          ? "Bring the pitch up slowly"
+          : state.deviation?.direction === "sharp"
+            ? "Back the pitch down slowly"
+            : "Keep the note ringing";
+  const tuningCoachBody = !hasActivePitch
+    ? "Pluck one string by itself and let it sustain long enough for the tuner to lock."
+    : !noteMatchesTarget
+      ? `Detected ${detectedNoteLabel}, but the target is ${targetNoteLabel}. Re-pluck one isolated string before adjusting.`
+      : state.uiStatus === "in-tune"
+        ? "Hold the note steady. If the needle stays centered, move on to the next string."
+        : `Current offset is ${heroPanel.centsLabel}. Use small adjustments and re-pluck after each change.`;
+  const tuningCoachTone = !hasActivePitch ? "idle" : !noteMatchesTarget ? "warning" : state.uiStatus;
 
   return (
     <PageShell
@@ -528,6 +550,26 @@ export function TunerLandingScreen({
               </div>
               <div className={`direction-chip direction-chip--${state.deviation?.direction ?? "idle"}`}>
                 {hasActivePitch ? directionLabel : "No pitch lock"}
+              </div>
+              <div className={`tuning-coach tuning-coach--${tuningCoachTone}`}>
+                <div className="tuning-coach-copy">
+                  <span className="tuning-coach-kicker">Tuning coach</span>
+                  <strong>{tuningCoachTitle}</strong>
+                  <p>{tuningCoachBody}</p>
+                </div>
+                <div className="tuning-coach-meter" aria-label="closeness to tune">
+                  <div className="tuning-coach-scale">
+                    <span
+                      className={`tuning-coach-fill ${state.uiStatus === "in-tune" ? "tuning-coach-fill--success" : ""}`}
+                      style={{ width: `${hasActivePitch ? Math.max(closenessPercent, 8) : 0}%` }}
+                    />
+                  </div>
+                  <div className="tuning-coach-labels">
+                    <span>Far</span>
+                    <span>Near</span>
+                    <span>Locked</span>
+                  </div>
+                </div>
               </div>
               <div className="tuner-readout-strip" aria-label="live tuner details">
                 <div className="tuner-readout-card">

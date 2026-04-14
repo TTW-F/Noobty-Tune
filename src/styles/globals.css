@@ -416,6 +416,82 @@ button {
   color: #d8f0ff;
 }
 
+.tuning-coach {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(157, 178, 204, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tuning-coach--warning {
+  background: rgba(56, 37, 10, 0.62);
+  border-color: rgba(247, 184, 75, 0.28);
+}
+
+.tuning-coach--in-tune {
+  background: rgba(10, 40, 24, 0.72);
+  border-color: rgba(73, 209, 125, 0.26);
+}
+
+.tuning-coach-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.tuning-coach-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tuning-coach-copy strong {
+  color: #f8fafc;
+  font-size: 1rem;
+}
+
+.tuning-coach-copy p {
+  margin: 0;
+  color: #dbeafe;
+}
+
+.tuning-coach-meter {
+  display: grid;
+  gap: 8px;
+}
+
+.tuning-coach-scale {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+}
+
+.tuning-coach-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f7b84b 0%, #ff8a3d 55%, #49d17d 100%);
+  transition: width 180ms ease;
+}
+
+.tuning-coach-fill--success {
+  background: linear-gradient(90deg, #7fe7a9 0%, #49d17d 100%);
+}
+
+.tuning-coach-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
 .tuner-readout-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
