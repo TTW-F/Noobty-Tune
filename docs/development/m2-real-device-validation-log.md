@@ -36,6 +36,47 @@ Current M2 validation should cover:
 - primary path: `YIN + stabilizer`
 - debug comparison path: `autocorrelation`
 
+## 3.1 Acceptance Focus For M2
+
+This stage should prioritize the `V1 baseline` automatic-target flow.
+
+Do not block M2 on:
+
+- manual target-string mode
+- manual-mode-only UI issues
+- post-V1 tuning workflow enhancements
+
+Reference:
+
+- `docs/development/v1-delivery-classification-2026-04-14.md`
+
+## 3.2 Run Priority
+
+Use this order unless there is a specific blocker:
+
+1. Quiet room, sustain, `E2 -> E4`
+2. Quiet room, short pluck, `E2 -> E4`
+3. Moderate noise, sustain, `E2 -> E4`
+4. Focused re-runs for strings or scenarios that failed
+
+## 3.3 Pass / Needs Tuning / Fail
+
+Use the result labels consistently:
+
+- `pass`
+  - correct string mapping observed
+  - no octave error
+  - stable convergence reached in a reasonable time for the scenario
+  - cents jitter is acceptable for the scenario
+- `needs tuning`
+  - generally usable, but convergence is slow, jittery, or inconsistent
+  - no hard blocker, but thresholds or stabilizer settings likely need adjustment
+- `fail`
+  - wrong string mapping
+  - octave error
+  - no stable convergence in a scenario that should be supported
+  - behavior is confusing enough to block normal use
+
 ## 4. Run Template
 
 Copy this block for each validation run.
@@ -64,6 +105,23 @@ Copy this block for each validation run.
 - Recording / screenshot:
 ```
 
+## 4.1 Recommended Notes Format
+
+Keep the `Notes` field compact and decision-oriented:
+
+- what happened
+- whether it is repeatable
+- whether it looks like detector, stabilizer, target mapping, or UI feedback
+
+Example:
+
+```md
+- Low E mapped correctly after second pluck.
+- Stable lock took ~1.6s, slightly slower than expected.
+- Jitter remained visible near the center line.
+- Likely stabilizer-threshold tuning issue, not a wrong-string issue.
+```
+
 ## 5. Batch Plan
 
 ### Batch 1
@@ -81,6 +139,15 @@ Short-pluck focused checks.
 ### Batch 4
 
 Optional `YIN` vs `autocorrelation` comparison review.
+
+## 5.1 Minimum M2 Completion Set
+
+Before calling M2 "first-pass validated", make sure there is at least:
+
+- one quiet sustain run for all six strings
+- one quiet short-pluck run for all six strings
+- one moderate-noise sustain run for `E2`, `A2`, and `E4`
+- one explicit conclusion on whether `autocorrelation` remains diagnostic-only
 
 ## 6. Summary Table
 
@@ -111,6 +178,40 @@ Record every tuning decision here before changing code.
 - Validation follow-up:
 ```
 
+## 7.1 Tuning Decision Rules
+
+Do not change thresholds after a single weak run.
+
+A tuning change should usually require one of these:
+
+- the same issue repeats across multiple runs on the same string
+- the same issue appears across multiple strings
+- the issue is severe enough to count as a clear blocker
+
+When a tuning change is made, always record:
+
+- what metric or symptom triggered the change
+- which scenario should improve
+- which regression risk should be watched next
+
+## 8. Round Summary Template
+
+Copy this after each validation batch.
+
+```md
+### Validation Round Summary
+
+- Date:
+- Batch:
+- Scope covered:
+- Main passes:
+- Main failures:
+- Strings needing re-run:
+- Recommended code/config change:
+- Can M2 continue without change: `yes` / `no`
+- Next validation step:
+```
+
 ## 8. Stage Exit Check
 
 Mark these after each validation round.
@@ -120,3 +221,11 @@ Mark these after each validation round.
 - [ ] short-pluck behavior documented
 - [ ] need for `autocorrelation` promotion decided
 - [ ] next step toward "in-tune" closed-loop experience decided
+
+## 9. Exit Decision
+
+At the end of the current M2 round, record one explicit decision:
+
+- `M2 still in progress`
+- `M2 first-pass complete, move to M3 closure work`
+- `M2 blocked, redesign or detector strategy review required`
