@@ -106,6 +106,6 @@ export interface PitchDetector {
 }
 
 export interface PitchStabilizer {
-  push(reading: PitchReading | null): StabilizedPitchReading | null;
+  push(reading: PitchReading | null, targetHint?: TuningTarget | null): StabilizedPitchReading | null;
   reset(): void;
 }

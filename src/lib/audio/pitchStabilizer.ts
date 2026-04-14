@@ -16,7 +16,7 @@ export class RollingPitchStabilizer implements PitchStabilizer {
     this.options = options;
   }
 
-  push(reading: PitchReading | null): StabilizedPitchReading | null {
+  push(reading: PitchReading | null, targetHint: TuningTarget | null = null): StabilizedPitchReading | null {
     if (!reading) {
       this.reset();
       return null;
@@ -34,7 +34,7 @@ export class RollingPitchStabilizer implements PitchStabilizer {
     this.history = [...this.history, reading].slice(-maxHistory);
     const recentWindow = this.history.slice(-requiredSamples);
 
-    const target = findClosestTuningTarget(reading.frequencyHz);
+    const target = targetHint ?? findClosestTuningTarget(reading.frequencyHz);
     const referenceFrequencyHz = target?.frequencyHz ?? reading.frequencyHz;
     const centsValues = recentWindow.map((item) => getCentsOffset(item.frequencyHz, referenceFrequencyHz));
     const stable = recentWindow.length >= requiredSamples && getSpreadInCents(centsValues) <= (this.options.centsTolerance ?? 10);

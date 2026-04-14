@@ -13,6 +13,7 @@ import {
   createListeningState,
   createPermissionDeniedState,
   createTunerStateSnapshot,
+  getSelectedTarget,
   INITIAL_TUNER_STATE,
   resolveActiveTarget,
   resolveDeviation,
@@ -124,6 +125,7 @@ export function useTunerPrototype() {
   const [selectedInputDeviceId, setSelectedInputDeviceId] = useState<string | null>(null);
   const [activeInputLabel, setActiveInputLabel] = useState<string | null>(null);
   const previousUiStatusRef = useRef<TunerState["uiStatus"]>(INITIAL_TUNER_STATE.uiStatus);
+  const selectionRef = useRef(INITIAL_TUNER_STATE.selection);
 
   function stopProcessingLoop() {
     if (loopHandleRef.current !== null) {
@@ -179,14 +181,19 @@ export function useTunerPrototype() {
     previousUiStatusRef.current = state.uiStatus;
   }, [state.uiStatus]);
 
+  useEffect(() => {
+    selectionRef.current = state.selection;
+  }, [state.selection]);
+
   function processAudioFrame(session: MicrophoneSession) {
     const detector = detectorRef.current;
     const comparisonDetector = comparisonDetectorRef.current;
     const stabilizer = stabilizerRef.current;
+    const targetHint = getSelectedTarget(selectionRef.current);
     const frame = session.frameCapture.readFrame(Date.now());
     const detectedPitch = detector.detect(frame.samples, frame.sampleRate, frame.timestampMs);
     const comparisonPitch = comparisonDetector.detect(frame.samples, frame.sampleRate, frame.timestampMs);
-    const stabilizedPitch = stabilizer.push(detectedPitch);
+    const stabilizedPitch = stabilizer.push(detectedPitch, targetHint);
     const signalPresent = frame.rms >= SIGNAL_PRESENT_RMS || frame.peak >= SIGNAL_PRESENT_PEAK;
 
     setDetectorComparison({
