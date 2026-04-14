@@ -444,6 +444,8 @@ export function TunerLandingScreen({
         : state.uiStatus === "in-tune"
           ? "Perfect"
           : "Listening";
+  const isManualMode = state.selection.mode === "manual";
+  const activeManualTarget = STANDARD_GUITAR_TUNING.find((target) => target.id === state.selection.targetId) ?? null;
   const noteMatchesTarget = hasActivePitch && detectedNoteLabel === targetNoteLabel;
   const closenessPercent =
     typeof centsValue === "number" ? Math.round((1 - clamp(Math.abs(centsValue) / 25, 0, 1)) * 100) : 0;
@@ -544,6 +546,11 @@ export function TunerLandingScreen({
                   ))}
                 </div>
               </div>
+              <div className="tuner-window-row" aria-hidden="true">
+                <span>Loose</span>
+                <strong>Center zone = tune window ±5 cent</strong>
+                <span>Loose</span>
+              </div>
               <div className="tuner-metric-row">
                 <strong>{hasActivePitch ? heroPanel.centsLabel : "Waiting for cents"}</strong>
                 <span>{hasActivePitch ? heroPanel.frequencyLabel : "Waiting for pitch"}</span>
@@ -590,55 +597,78 @@ export function TunerLandingScreen({
 
           <p className="tuner-guidance">{heroPanel.instruction}</p>
 
-          <section className="target-mode-panel" aria-labelledby="target-mode-title">
+          <section
+            className={`target-mode-panel ${isManualMode ? "target-mode-panel--manual" : "target-mode-panel--auto"}`}
+            aria-labelledby="target-mode-title"
+          >
             <div className="target-mode-header">
               <div>
-                <p className="target-mode-kicker">Target mode</p>
+                <p className="target-mode-kicker">Targeting</p>
                 <h3 id="target-mode-title" className="target-mode-title">
-                  Use auto detect or lock to one string
+                  Auto target is the main tuning flow
                 </h3>
+                <p className="target-mode-summary">
+                  {isManualMode
+                    ? `Manual lock is active on String ${activeManualTarget?.label ?? "--"} ${activeManualTarget ? `(${activeManualTarget.note}${activeManualTarget.octave})` : ""}.`
+                    : "Recommended for V1: pluck one string and let the tuner follow the nearest standard guitar target automatically."}
+                </p>
               </div>
-              <div className="target-mode-toggle">
-                <button
-                  type="button"
-                  className={`mode-chip ${state.selection.mode === "auto" ? "mode-chip--active" : ""}`}
-                  onClick={onEnableAutoTargetMode}
-                >
-                  Auto
-                </button>
-                <button
-                  type="button"
-                  className={`mode-chip ${state.selection.mode === "manual" ? "mode-chip--active" : ""}`}
-                  onClick={() => {
-                    onSelectManualTarget(state.selection.targetId ?? "string-6");
-                  }}
-                >
-                  Manual
-                </button>
+              <div className="target-mode-badges" aria-label="targeting mode badges">
+                <span className="target-mode-badge target-mode-badge--recommended">Auto recommended</span>
+                {isManualMode ? <span className="target-mode-badge target-mode-badge--manual">Manual lock active</span> : null}
               </div>
             </div>
 
-            <div className="manual-target-grid">
-              {STANDARD_GUITAR_TUNING.map((target) => {
-                const isManualActive = state.selection.mode === "manual" && state.selection.targetId === target.id;
-                return (
-                  <button
-                    key={target.id}
-                    type="button"
-                    className={`manual-target-pill ${isManualActive ? "manual-target-pill--active" : ""}`}
-                    onClick={() => {
-                      onSelectManualTarget(target.id);
-                    }}
-                  >
-                    <span>String {target.label}</span>
-                    <strong>
-                      {target.note}
-                      {target.octave}
-                    </strong>
-                  </button>
-                );
-              })}
+            <div className="target-mode-actions">
+              <button
+                type="button"
+                className={`mode-chip ${state.selection.mode === "auto" ? "mode-chip--active" : ""}`}
+                onClick={onEnableAutoTargetMode}
+              >
+                Use auto target
+              </button>
+              <button
+                type="button"
+                className={`mode-chip mode-chip--subtle ${state.selection.mode === "manual" ? "mode-chip--active" : ""}`}
+                onClick={() => {
+                  onSelectManualTarget(state.selection.targetId ?? "string-6");
+                }}
+              >
+                {isManualMode ? "Change locked string" : "Open manual lock"}
+              </button>
             </div>
+
+            <details className="manual-target-disclosure" open={isManualMode}>
+              <summary>
+                <span>Advanced: lock the tuner to one string manually</span>
+                <span className="manual-target-summary">
+                  {isManualMode && activeManualTarget
+                    ? `Now locked to String ${activeManualTarget.label} ${activeManualTarget.note}${activeManualTarget.octave}`
+                    : "Usually not needed during normal tuning"}
+                </span>
+              </summary>
+              <div className="manual-target-grid">
+                {STANDARD_GUITAR_TUNING.map((target) => {
+                  const isManualActive = state.selection.mode === "manual" && state.selection.targetId === target.id;
+                  return (
+                    <button
+                      key={target.id}
+                      type="button"
+                      className={`manual-target-pill ${isManualActive ? "manual-target-pill--active" : ""}`}
+                      onClick={() => {
+                        onSelectManualTarget(target.id);
+                      }}
+                    >
+                      <span>String {target.label}</span>
+                      <strong>
+                        {target.note}
+                        {target.octave}
+                      </strong>
+                    </button>
+                  );
+                })}
+              </div>
+            </details>
           </section>
 
           {rescueCard.show ? (
