@@ -436,6 +436,7 @@ export function TunerLandingScreen({
   const needleOffset = mapCentsToNeedleOffset(centsValue);
   const inputMeter = getInputMeterState(resolvedDebugReadout.frameRms);
   const rescueCard = buildRescueCardContent(state, resolvedDebugReadout.frameRms, activeInputLabel);
+  const showDeviceRecoveryHint = inputMeter.tone !== "active" || availableInputs.length === 0;
   const directionLabel =
     state.deviation?.direction === "sharp"
       ? "Tune down"
@@ -582,16 +583,17 @@ export function TunerLandingScreen({
                 <div className="tuner-readout-card">
                   <span>Detected</span>
                   <strong>{detectedNoteLabel}</strong>
+                  <small>{detectedNoteStatus}</small>
                 </div>
                 <div className="tuner-readout-card">
                   <span>Target</span>
                   <strong>{targetNoteLabel}</strong>
-                </div>
-                <div className="tuner-readout-card">
-                  <span>Quality</span>
-                  <strong>{confidenceLabel}</strong>
+                  <small>{targetStatus}</small>
                 </div>
               </div>
+              <p className="tuner-readout-meta">
+                {confidenceLabel} · {sampleLabel}
+              </p>
             </div>
           </div>
 
@@ -690,6 +692,9 @@ export function TunerLandingScreen({
             <div className="input-health-copy">
               <p className="input-health-label">Microphone input</p>
               <p className="input-health-message">{heroPanel.meterLabel}</p>
+              <p className="input-health-source">
+                Active source: <strong>{activeInputLabel ?? "Not listening yet"}</strong>
+              </p>
             </div>
             <div className="input-level-track" aria-hidden="true">
               <span
@@ -697,58 +702,12 @@ export function TunerLandingScreen({
                 style={{ width: `${Math.max(inputMeter.level * 100, inputMeter.level > 0 ? 8 : 0)}%` }}
               />
             </div>
+            {showDeviceRecoveryHint ? (
+              <p className="input-health-hint">
+                If this stays weak, open microphone settings below and switch to another input.
+              </p>
+            ) : null}
           </div>
-
-          <section className="device-panel" aria-labelledby="device-panel-title">
-            <div className="device-panel-header">
-              <div>
-                <p className="device-panel-kicker">Input source</p>
-                <h3 id="device-panel-title" className="device-panel-title">
-                  Choose the microphone you actually want to tune with
-                </h3>
-              </div>
-              <button
-                type="button"
-                className="device-refresh-button"
-                onClick={() => {
-                  void onRefreshInputs();
-                }}
-              >
-                Refresh list
-              </button>
-            </div>
-
-            <div className="device-panel-grid">
-              <label className="device-select-field">
-                <span className="device-select-label">Available microphones</span>
-                <select
-                  className="device-select"
-                  value={selectedInputDeviceId ?? ""}
-                  onChange={(event) => {
-                    void onSelectInput(event.target.value);
-                  }}
-                  disabled={availableInputs.length === 0}
-                >
-                  {availableInputs.length === 0 ? (
-                    <option value="">No microphone detected yet</option>
-                  ) : null}
-                  {availableInputs.map((device) => (
-                    <option key={device.deviceId} value={device.deviceId}>
-                      {device.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="device-active-card">
-                <span className="device-select-label">Current active source</span>
-                <strong>{activeInputLabel ?? "Not listening yet"}</strong>
-                <p>
-                  If the input meter stays near zero, switch to another microphone and pluck again.
-                </p>
-              </div>
-            </div>
-          </section>
 
           <div className="string-target-strip" aria-label="standard tuning targets">
             {STANDARD_GUITAR_TUNING.map((target) => {
@@ -767,6 +726,65 @@ export function TunerLandingScreen({
               );
             })}
           </div>
+
+          <details className="device-panel" open={showDeviceRecoveryHint}>
+            <summary className="device-panel-summary">
+              <div>
+                <p className="device-panel-kicker">Microphone settings</p>
+                <h3 id="device-panel-title" className="device-panel-title">
+                  Switch input only if the meter stays weak or silent
+                </h3>
+              </div>
+              <span className="device-panel-summary-copy">
+                {showDeviceRecoveryHint ? "Recovery step recommended" : "Usually no change needed"}
+              </span>
+            </summary>
+
+            <div className="device-panel-content">
+              <div className="device-panel-actions">
+                <button
+                  type="button"
+                  className="device-refresh-button"
+                  onClick={() => {
+                    void onRefreshInputs();
+                  }}
+                >
+                  Refresh list
+                </button>
+              </div>
+
+              <div className="device-panel-grid">
+                <label className="device-select-field">
+                  <span className="device-select-label">Available microphones</span>
+                  <select
+                    className="device-select"
+                    value={selectedInputDeviceId ?? ""}
+                    onChange={(event) => {
+                      void onSelectInput(event.target.value);
+                    }}
+                    disabled={availableInputs.length === 0}
+                  >
+                    {availableInputs.length === 0 ? (
+                      <option value="">No microphone detected yet</option>
+                    ) : null}
+                    {availableInputs.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className="device-active-card">
+                  <span className="device-select-label">Current active source</span>
+                  <strong>{activeInputLabel ?? "Not listening yet"}</strong>
+                  <p>
+                    If the input meter stays near zero, switch to another microphone and pluck again.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </details>
         </section>
 
         <div className="primary-actions">
@@ -801,18 +819,6 @@ export function TunerLandingScreen({
         <p id="permission-note" className="permission-note">
           {"\u4ec5\u5728\u4f60\u4e3b\u52a8\u70b9\u51fb\u540e\u8bf7\u6c42\u9ea6\u514b\u98ce\u6743\u9650\u3002\u6388\u6743\u6210\u529f\u540e\uff0c\u4f1a\u8fdb\u5165\u76d1\u542c\u51c6\u5907\u72b6\u6001\u3002"}
         </p>
-
-        <div
-          className="reference-strip"
-          aria-label="\u6807\u51c6\u8c03\u5f26\u53c2\u8003"
-        >
-          {STANDARD_GUITAR_TUNING.map((target) => (
-            <span key={target.id} className="reference-pill">
-              {target.note}
-              {target.octave}
-            </span>
-          ))}
-        </div>
 
         <div className="status-stack" aria-label="\u8c03\u97f3\u5668\u72b6\u6001\u63d0\u793a">
           <StatusCard
