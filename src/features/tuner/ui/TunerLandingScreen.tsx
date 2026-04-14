@@ -398,6 +398,24 @@ export function TunerLandingScreen({
   const currentPrompt = getPromptFromState(state);
   const resolvedDebugReadout = buildDebugReadout(state, debugReadout);
   const heroPanel = buildHeroPanelContent(state, resolvedDebugReadout);
+  const liveReading = state.stabilizedPitch ?? state.detectedPitch;
+  const detectedNoteLabel =
+    liveReading?.noteName && typeof liveReading.octave === "number"
+      ? `${liveReading.noteName}${liveReading.octave}`
+      : "--";
+  const detectedNoteStatus = state.stabilizedPitch
+    ? "Stable reading"
+    : state.detectedPitch
+      ? "Live reading"
+      : "Waiting for pitch";
+  const targetNoteLabel = state.activeTarget ? `${state.activeTarget.note}${state.activeTarget.octave}` : "Auto";
+  const targetStatus = state.activeTarget ? `Target string ${state.activeTarget.label}` : "Waiting for target";
+  const confidenceLabel =
+    typeof liveReading?.clarity === "number" ? `${Math.round(liveReading.clarity * 100)}% clarity` : "Clarity --";
+  const sampleLabel =
+    typeof state.stabilizedPitch?.sampleCount === "number"
+      ? `${state.stabilizedPitch.sampleCount} samples`
+      : "Samples --";
   const isListening =
     state.audioStatus === "listening" || state.audioStatus === "ready" || state.audioStatus === "suspended";
   const canResetSession =
@@ -444,8 +462,28 @@ export function TunerLandingScreen({
 
           <div className="tuner-primary-readout">
             <div className="note-orb" aria-live="polite">
-              <span className="note-orb-note">{heroPanel.noteLabel}</span>
-              <span className="note-orb-target">{heroPanel.targetLabel}</span>
+              <div className="note-orb-header">
+                <span className="note-orb-kicker">Detected note</span>
+                <span className="note-orb-status">{detectedNoteStatus}</span>
+              </div>
+              <span className="note-orb-note">{detectedNoteLabel}</span>
+              <div className="note-orb-meta-grid">
+                <div className="note-orb-meta-card">
+                  <span className="note-orb-meta-label">Target</span>
+                  <strong>{targetNoteLabel}</strong>
+                  <span className="note-orb-meta-copy">{targetStatus}</span>
+                </div>
+                <div className="note-orb-meta-card">
+                  <span className="note-orb-meta-label">Live pitch</span>
+                  <strong>{heroPanel.frequencyLabel}</strong>
+                  <span className="note-orb-meta-copy">{heroPanel.centsLabel}</span>
+                </div>
+                <div className="note-orb-meta-card">
+                  <span className="note-orb-meta-label">Reading quality</span>
+                  <strong>{confidenceLabel}</strong>
+                  <span className="note-orb-meta-copy">{sampleLabel}</span>
+                </div>
+              </div>
             </div>
 
             <div className="tuner-needle-panel" aria-label="pitch deviation meter">
@@ -472,6 +510,20 @@ export function TunerLandingScreen({
               </div>
               <div className={`direction-chip direction-chip--${state.deviation?.direction ?? "idle"}`}>
                 {directionLabel}
+              </div>
+              <div className="tuner-readout-strip" aria-label="live tuner details">
+                <div className="tuner-readout-card">
+                  <span>Detected</span>
+                  <strong>{detectedNoteLabel}</strong>
+                </div>
+                <div className="tuner-readout-card">
+                  <span>Target</span>
+                  <strong>{targetNoteLabel}</strong>
+                </div>
+                <div className="tuner-readout-card">
+                  <span>Quality</span>
+                  <strong>{confidenceLabel}</strong>
+                </div>
               </div>
             </div>
           </div>

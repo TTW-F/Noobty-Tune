@@ -182,8 +182,7 @@ button {
 
 .note-orb {
   display: grid;
-  place-items: center;
-  gap: 8px;
+  gap: 14px;
   min-height: 220px;
   padding: 18px;
   border-radius: 28px;
@@ -193,18 +192,68 @@ button {
   border: 1px solid rgba(88, 184, 255, 0.16);
 }
 
+.note-orb-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.note-orb-kicker,
+.note-orb-status {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.note-orb-kicker {
+  color: #7dd3fc;
+}
+
+.note-orb-status {
+  color: var(--muted);
+}
+
 .note-orb-note {
   font-size: clamp(4.8rem, 16vw, 8rem);
   line-height: 0.9;
   font-weight: 700;
   letter-spacing: -0.06em;
   color: #f8fafc;
+  text-align: center;
 }
 
-.note-orb-target {
+.note-orb-meta-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.note-orb-meta-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(157, 178, 204, 0.12);
+}
+
+.note-orb-meta-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--muted);
-  font-size: 1rem;
-  text-align: center;
+}
+
+.note-orb-meta-card strong {
+  font-size: 1.12rem;
+  color: #f8fafc;
+}
+
+.note-orb-meta-copy {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .tuner-needle-panel {
@@ -322,6 +371,34 @@ button {
 .direction-chip--idle {
   background: rgba(88, 184, 255, 0.12);
   color: #d8f0ff;
+}
+
+.tuner-readout-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tuner-readout-card {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(157, 178, 204, 0.12);
+}
+
+.tuner-readout-card span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tuner-readout-card strong {
+  color: #f8fafc;
+  font-size: 0.96rem;
 }
 
 .tuner-guidance {
@@ -1130,6 +1207,10 @@ button {
   .tuner-primary-readout {
     grid-template-columns: 0.95fr 1.05fr;
     align-items: stretch;
+  }
+
+  .note-orb-meta-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .device-panel-grid {
