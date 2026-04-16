@@ -36,6 +36,12 @@ type RescueCardContent = {
   readonly tone: "warning" | "info" | "success";
 };
 
+type LiveStateContent = {
+  readonly label: string;
+  readonly detail: string;
+  readonly tone: "idle" | "active" | "warning" | "success";
+};
+
 const M1_PROMPTS: M1Prompt[] = [
   {
     key: "idle",
@@ -391,6 +397,46 @@ function buildRescueCardContent(
   };
 }
 
+function buildLiveStateContent(state: TunerState, hasActivePitch: boolean): LiveStateContent {
+  if (state.uiStatus === "in-tune") {
+    return {
+      label: "Pitch locked",
+      detail: "Inside the tune window. Make only tiny adjustments if the note drifts.",
+      tone: "success",
+    };
+  }
+
+  if (state.uiStatus === "unstable" || state.uiStatus === "detecting") {
+    return {
+      label: "Tracking pitch",
+      detail: "A note is present, but the tuner is still settling on a stable reading.",
+      tone: "active",
+    };
+  }
+
+  if (state.uiStatus === "signal-weak" || state.uiStatus === "no-signal") {
+    return {
+      label: "Need cleaner input",
+      detail: "Pluck one string clearly and let it ring longer so the tuner can lock.",
+      tone: "warning",
+    };
+  }
+
+  if (hasActivePitch) {
+    return {
+      label: "Pitch detected",
+      detail: "Reading is live. Watch the needle and adjust in small steps.",
+      tone: "active",
+    };
+  }
+
+  return {
+    label: "Waiting for pitch",
+    detail: "Pluck one string cleanly. The tuner will lock after it hears a stable note.",
+    tone: "idle",
+  };
+}
+
 export function TunerLandingScreen({
   state,
   isStarting,
@@ -469,6 +515,17 @@ export function TunerLandingScreen({
         ? "Hold the note steady. If the needle stays centered, move on to the next string."
         : `Current offset is ${heroPanel.centsLabel}. Use small adjustments and re-pluck after each change.`;
   const tuningCoachTone = !hasActivePitch ? "idle" : !noteMatchesTarget ? "warning" : state.uiStatus;
+  const liveState = buildLiveStateContent(state, hasActivePitch);
+  const successHeadline = state.activeTarget
+    ? `String ${state.activeTarget.label} is in tune`
+    : "Current string is in tune";
+  const showSuccessPanel = state.uiStatus === "in-tune" && hasActivePitch;
+  const successTrustLabel =
+    inputMeter.tone === "active" && typeof liveReading?.clarity === "number" && liveReading.clarity >= 0.9
+      ? "Strong lock"
+      : inputMeter.tone === "warning"
+        ? "Tune looks right, but input is weak"
+        : "Hold and re-pluck once to confirm";
 
   return (
     <PageShell
@@ -503,6 +560,14 @@ export function TunerLandingScreen({
                 <span className="note-orb-kicker">Detected note</span>
                 <span className="note-orb-status">{detectedNoteStatus}</span>
               </div>
+              <div className={`active-target-banner ${state.activeTarget ? "active-target-banner--locked" : ""}`}>
+                <span className="active-target-banner-label">Current target string</span>
+                <strong>
+                  {state.activeTarget
+                    ? `String ${state.activeTarget.label} - ${state.activeTarget.note}${state.activeTarget.octave}`
+                    : "Auto target will lock after a clean pluck"}
+                </strong>
+              </div>
               <span className="note-orb-note">{detectedNoteLabel}</span>
               <div className="note-orb-meta-grid">
                 <div className="note-orb-meta-card">
@@ -515,15 +580,20 @@ export function TunerLandingScreen({
                   <strong>{heroPanel.frequencyLabel}</strong>
                   <span className="note-orb-meta-copy">{heroPanel.centsLabel}</span>
                 </div>
-                <div className="note-orb-meta-card">
-                  <span className="note-orb-meta-label">Reading quality</span>
-                  <strong>{confidenceLabel}</strong>
-                  <span className="note-orb-meta-copy">{sampleLabel}</span>
-                </div>
               </div>
+              <p className="note-orb-meta-inline">
+                Reading quality: {confidenceLabel} · {sampleLabel}
+              </p>
             </div>
 
             <div className="tuner-needle-panel" aria-label="pitch deviation meter">
+              <div className={`live-state-banner live-state-banner--${liveState.tone}`} aria-live="polite">
+                <div className="live-state-copy">
+                  <span className="live-state-label">{liveState.label}</span>
+                  <p>{liveState.detail}</p>
+                </div>
+                <span className={`live-state-pulse live-state-pulse--${liveState.tone}`} aria-hidden="true" />
+              </div>
               <div className="tuner-direction-row" aria-hidden="true">
                 <span>Flat</span>
                 <span>In tune</span>
@@ -559,6 +629,20 @@ export function TunerLandingScreen({
               <div className={`direction-chip direction-chip--${state.deviation?.direction ?? "idle"}`}>
                 {hasActivePitch ? directionLabel : "No pitch lock"}
               </div>
+              {showSuccessPanel ? (
+                <div className="tune-success-panel" aria-live="polite">
+                  <div className="tune-success-copy">
+                    <span className="tune-success-kicker">Tune confirmed</span>
+                    <strong>{successHeadline}</strong>
+                    <p>The needle is inside the tune window. Let the note ring once more, then move to the next string.</p>
+                  </div>
+                  <div className="tune-success-stats">
+                    <span>{successTrustLabel}</span>
+                    <span>{heroPanel.centsLabel}</span>
+                    <span>{state.activeTarget ? `Next: move on from String ${state.activeTarget.label}` : heroPanel.frequencyLabel}</span>
+                  </div>
+                </div>
+              ) : null}
               <div className={`tuning-coach tuning-coach--${tuningCoachTone}`}>
                 <div className="tuning-coach-copy">
                   <span className="tuning-coach-kicker">Tuning coach</span>
@@ -579,76 +663,53 @@ export function TunerLandingScreen({
                   </div>
                 </div>
               </div>
-              <div className="tuner-readout-strip" aria-label="live tuner details">
-                <div className="tuner-readout-card">
-                  <span>Detected</span>
-                  <strong>{detectedNoteLabel}</strong>
-                  <small>{detectedNoteStatus}</small>
-                </div>
-                <div className="tuner-readout-card">
-                  <span>Target</span>
-                  <strong>{targetNoteLabel}</strong>
-                  <small>{targetStatus}</small>
-                </div>
-              </div>
-              <p className="tuner-readout-meta">
-                {confidenceLabel} · {sampleLabel}
-              </p>
             </div>
           </div>
 
           <p className="tuner-guidance">{heroPanel.instruction}</p>
 
-          <section
+          <details
             className={`target-mode-panel ${isManualMode ? "target-mode-panel--manual" : "target-mode-panel--auto"}`}
-            aria-labelledby="target-mode-title"
+            open={isManualMode}
           >
-            <div className="target-mode-header">
+            <summary className="target-mode-summary-row">
               <div>
-                <p className="target-mode-kicker">Targeting</p>
+                <p className="target-mode-kicker">Advanced targeting</p>
                 <h3 id="target-mode-title" className="target-mode-title">
-                  Auto target is the main tuning flow
+                  Auto target stays on by default
                 </h3>
                 <p className="target-mode-summary">
                   {isManualMode
                     ? `Manual lock is active on String ${activeManualTarget?.label ?? "--"} ${activeManualTarget ? `(${activeManualTarget.note}${activeManualTarget.octave})` : ""}.`
-                    : "Recommended for V1: pluck one string and let the tuner follow the nearest standard guitar target automatically."}
+                    : "Open this only if you need to force the tuner to follow one specific string."}
                 </p>
               </div>
               <div className="target-mode-badges" aria-label="targeting mode badges">
-                <span className="target-mode-badge target-mode-badge--recommended">Auto recommended</span>
-                {isManualMode ? <span className="target-mode-badge target-mode-badge--manual">Manual lock active</span> : null}
+                <span className="target-mode-badge target-mode-badge--recommended">Auto default</span>
+                {isManualMode ? <span className="target-mode-badge target-mode-badge--manual">Manual active</span> : null}
               </div>
-            </div>
+            </summary>
 
-            <div className="target-mode-actions">
-              <button
-                type="button"
-                className={`mode-chip ${state.selection.mode === "auto" ? "mode-chip--active" : ""}`}
-                onClick={onEnableAutoTargetMode}
-              >
-                Use auto target
-              </button>
-              <button
-                type="button"
-                className={`mode-chip mode-chip--subtle ${state.selection.mode === "manual" ? "mode-chip--active" : ""}`}
-                onClick={() => {
-                  onSelectManualTarget(state.selection.targetId ?? "string-6");
-                }}
-              >
-                {isManualMode ? "Change locked string" : "Open manual lock"}
-              </button>
-            </div>
+            <div className="target-mode-content">
+              <div className="target-mode-actions">
+                <button
+                  type="button"
+                  className={`mode-chip ${state.selection.mode === "auto" ? "mode-chip--active" : ""}`}
+                  onClick={onEnableAutoTargetMode}
+                >
+                  Use auto target
+                </button>
+                <button
+                  type="button"
+                  className={`mode-chip mode-chip--subtle ${state.selection.mode === "manual" ? "mode-chip--active" : ""}`}
+                  onClick={() => {
+                    onSelectManualTarget(state.selection.targetId ?? "string-6");
+                  }}
+                >
+                  {isManualMode ? "Change locked string" : "Enable manual lock"}
+                </button>
+              </div>
 
-            <details className="manual-target-disclosure" open={isManualMode}>
-              <summary>
-                <span>Advanced: lock the tuner to one string manually</span>
-                <span className="manual-target-summary">
-                  {isManualMode && activeManualTarget
-                    ? `Now locked to String ${activeManualTarget.label} ${activeManualTarget.note}${activeManualTarget.octave}`
-                    : "Usually not needed during normal tuning"}
-                </span>
-              </summary>
               <div className="manual-target-grid">
                 {STANDARD_GUITAR_TUNING.map((target) => {
                   const isManualActive = state.selection.mode === "manual" && state.selection.targetId === target.id;
@@ -670,10 +731,10 @@ export function TunerLandingScreen({
                   );
                 })}
               </div>
-            </details>
-          </section>
+            </div>
+          </details>
 
-          {rescueCard.show ? (
+          {rescueCard.show && rescueCard.tone !== "success" ? (
             <section className={`rescue-card rescue-card--${rescueCard.tone}`} aria-live="polite">
               <div className="rescue-card-header">
                 <p className="rescue-card-kicker">Tuning help</p>
@@ -709,7 +770,21 @@ export function TunerLandingScreen({
             ) : null}
           </div>
 
-          <div className="string-target-strip" aria-label="standard tuning targets">
+          <section className="string-target-section" aria-labelledby="string-target-section-title">
+            <div className="string-target-header">
+              <div>
+                <p className="string-target-kicker">Target rail</p>
+                <h3 id="string-target-section-title" className="string-target-title">
+                  The highlighted string is the one the tuner is following
+                </h3>
+              </div>
+              <span className="string-target-summary">
+                {state.activeTarget
+                  ? `Locked on String ${state.activeTarget.label}`
+                  : "Waiting for a clean note"}
+              </span>
+            </div>
+            <div className="string-target-strip" aria-label="standard tuning targets">
             {STANDARD_GUITAR_TUNING.map((target) => {
               const isActive = state.activeTarget?.id === target.id;
               return (
@@ -722,10 +797,12 @@ export function TunerLandingScreen({
                     {target.note}
                     {target.octave}
                   </strong>
+                  <small>{isActive ? "Following now" : "Standby"}</small>
                 </div>
               );
             })}
-          </div>
+            </div>
+          </section>
 
           <details className="device-panel" open={showDeviceRecoveryHint}>
             <summary className="device-panel-summary">
@@ -820,23 +897,26 @@ export function TunerLandingScreen({
           {"\u4ec5\u5728\u4f60\u4e3b\u52a8\u70b9\u51fb\u540e\u8bf7\u6c42\u9ea6\u514b\u98ce\u6743\u9650\u3002\u6388\u6743\u6210\u529f\u540e\uff0c\u4f1a\u8fdb\u5165\u76d1\u542c\u51c6\u5907\u72b6\u6001\u3002"}
         </p>
 
-        <div className="status-stack" aria-label="\u8c03\u97f3\u5668\u72b6\u6001\u63d0\u793a">
-          <StatusCard
-            key={currentPrompt.key}
-            label={currentPrompt.label}
-            title={currentPrompt.title}
-            description={currentPrompt.description}
-            hint={currentPrompt.hint}
-            tone={currentPrompt.tone}
-          />
-          <StatusCard
-            label="\u4e0b\u4e00\u6b65"
-            title="M2 \u68c0\u6d4b\u9a8c\u8bc1\u8fdb\u884c\u4e2d"
-            description="\u5f53\u524d\u9875\u9762\u5df2\u5f00\u59cb\u8f93\u51fa\u5f00\u53d1\u6001\u8c03\u8bd5\u8bfb\u6570\uff0c\u7528\u4e8e\u9a8c\u8bc1\u97f3\u9891\u5e27\u91c7\u96c6\u3001YIN \u5019\u9009\u68c0\u6d4b\u548c\u57fa\u7840\u7a33\u5b9a\u5316\u6548\u679c\u3002"
-            hint="\u672c\u9636\u6bb5\u91cd\u70b9\u4e0d\u662f UI \u7cbe\u4fee\uff0c\u800c\u662f\u786e\u8ba4 low E \u5230 high E \u7684\u771f\u5b9e\u8bc6\u522b\u7a33\u5b9a\u6027\u3002"
-            tone="neutral"
-          />
-        </div>
+        <details className="status-stack">
+          <summary className="status-stack-summary">Session notes and validation context</summary>
+          <div className="status-stack-panels" aria-label="\u8c03\u97f3\u5668\u72b6\u6001\u63d0\u793a">
+            <StatusCard
+              key={currentPrompt.key}
+              label={currentPrompt.label}
+              title={currentPrompt.title}
+              description={currentPrompt.description}
+              hint={currentPrompt.hint}
+              tone={currentPrompt.tone}
+            />
+            <StatusCard
+              label="\u4e0b\u4e00\u6b65"
+              title="M3 tuning UX closure in progress"
+              description="This panel keeps the current validation context available without competing with the main tuning flow."
+              hint="Use it when you want to understand session state, permission state, or validation-stage notes."
+              tone="neutral"
+            />
+          </div>
+        </details>
 
         <details className="developer-tools">
           <summary>Developer tools</summary>
