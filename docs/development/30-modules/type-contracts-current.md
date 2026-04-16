@@ -48,7 +48,7 @@
 
 ## 5. Practical Constraints
 
-- `TunerSelection` 支持 `auto/manual`，但当前 UI 只落地了自动模式入口。
+- `TunerSelection` 支持 `auto/manual`，当前 UI 默认自动模式，并在 Advanced targeting 中提供手动锁定入口。
 - `TunerUiStatus` 虽保留兼容层语义，但运行主流程已依赖 `pitchTracking` 的 stage + interpretation + viewModel。
 - `DetectionSource` 支持 `test-tone`，当前链路主要输出 `microphone`。
 
