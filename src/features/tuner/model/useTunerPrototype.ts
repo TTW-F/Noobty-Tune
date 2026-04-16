@@ -4,8 +4,9 @@ import {
   type AudioInputDevice,
   BrowserMicrophoneManager,
   type MicrophoneSession,
-  RollingPitchStabilizer,
+  SustainedPitchStabilizer,
   YinPitchDetector,
+  globalDetectionLogger,
 } from "../../../lib/audio";
 import type { TunerEngineError, TunerState, TuningStringId } from "../../../types";
 import {
@@ -111,11 +112,15 @@ export function useTunerPrototype() {
     }),
   );
   const stabilizerRef = useRef(
-    new RollingPitchStabilizer({
-      requiredSamples: 3,
-      centsTolerance: 12,
-      clarityThreshold: 0.82,
-      maxHistory: 5,
+    new SustainedPitchStabilizer({
+      initialRequiredSamples: 3,
+      initialCentsTolerance: 12,
+      initialClarityThreshold: 0.82,
+      sustainedClarityThreshold: 0.65,
+      sustainedCentsTolerance: 18,
+      maxConsecutiveFailures: 4,
+      holdFrames: 8,
+      maxHistory: 8,
     }),
   );
   const loopHandleRef = useRef<number | null>(null);
@@ -215,6 +220,30 @@ export function useTunerPrototype() {
           : null,
     });
 
+    // 记录时序数据用于调试
+    const uiStatus = !detectedPitch
+      ? signalPresent
+        ? "no-signal"
+        : weakSignalPresent
+          ? "signal-weak"
+          : "listening"
+      : stabilizedPitch?.stable
+        ? "in-tune-or-detecting"
+        : "unstable";
+
+    globalDetectionLogger.log({
+      timestampMs: frame.timestampMs,
+      frameRms: frame.rms,
+      framePeak: frame.peak,
+      detectedFrequencyHz: detectedPitch?.frequencyHz ?? null,
+      detectedClarity: detectedPitch?.clarity ?? null,
+      comparisonFrequencyHz: comparisonPitch?.frequencyHz ?? null,
+      stabilizedFrequencyHz: stabilizedPitch?.frequencyHz ?? null,
+      stabilizedStable: stabilizedPitch?.stable ?? null,
+      uiStatus,
+      note: toDebugNoteLabel(detectedPitch?.noteName, detectedPitch?.octave) ?? "null",
+    });
+
     frameLogger.debug("Frame summary", "Sampled microphone frame metrics for live diagnostics.", {
       throttleKey: "frame-summary",
       throttleMs: 900,
@@ -282,22 +311,32 @@ export function useTunerPrototype() {
     setState((previousState) => {
       const activeTarget = resolveActiveTarget(previousState.selection, detectedPitch, stabilizedPitch);
       const deviation = resolveDeviation(activeTarget, stabilizedPitch, detectedPitch);
-      const uiStatus = !detectedPitch
-        ? signalPresent
-          ? "no-signal"
-          : weakSignalPresent
-            ? "signal-weak"
-            : "listening"
-        : stabilizedPitch?.stable
-          ? deviation?.direction === "in-tune"
-            ? "in-tune"
-            : "detecting"
-          : "unstable";
+      
+      // 改进的UI状态判断 - 区分"跟踪降级"和"完全丢失"
+      let newUiStatus: TunerState["uiStatus"];
+      
+      if (!stabilizedPitch) {
+        // 完全没有稳定读数
+        newUiStatus = signalPresent ? "no-signal" : weakSignalPresent ? "signal-weak" : "listening";
+      } else {
+        // 有稳定读数（可能是hold状态）
+        if (stabilizedPitch.stable) {
+          // 稳定且准确
+          newUiStatus = deviation?.direction === "in-tune" ? "in-tune" : "detecting";
+        } else {
+          // 不稳定但仍在跟踪（降级状态）
+          if (stabilizedPitch.clarity > 0.5) {
+            newUiStatus = "unstable"; // 跟踪中但不稳定
+          } else {
+            newUiStatus = "detecting"; // 严重降级，接近丢失
+          }
+        }
+      }
 
       return createTunerStateSnapshot({
         ...previousState,
         audioStatus: "listening",
-        uiStatus,
+        uiStatus: newUiStatus,
         activeTarget,
         detectedPitch,
         stabilizedPitch,
@@ -475,5 +514,13 @@ export function useTunerPrototype() {
     enableAutoTargetMode,
     selectManualTarget,
     isStarting: state.uiStatus === "requesting-permission",
+    // 调试工具
+    debugLogger: {
+      start: () => globalDetectionLogger.startRecording(),
+      stop: () => globalDetectionLogger.stopRecording(),
+      export: () => globalDetectionLogger.exportToConsole(),
+      analyze: () => globalDetectionLogger.analyzeDropoutPoint(),
+      exportCSV: () => globalDetectionLogger.exportToCSV(),
+    },
   };
 }
