@@ -1,105 +1,114 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { ContinuousPitchTracker } from "../../lib/audio/continuousPitchTracker";
 import { TuningInterpreter } from "../../lib/music/tuningInterpreter";
 import { TunerViewModelBuilder } from "../../features/tuner/model/tunerViewModel";
 import type { RawPitchCandidate } from "../../types/pitchTracking";
-import type { TunerSelection } from "../../types/tuner";
+import type { TunerSelection } from "../../types";
+
+describe("tuner data flow", () => {
+  it("moves from acquiring to locked to degraded to lost without flashing success early", () => {
+    const tracker = new ContinuousPitchTracker({
+      holdDurationMs: 225,
+      releaseAfterMisses: 6,
+    });
+    const interpreter = new TuningInterpreter();
+    const viewModelBuilder = new TunerViewModelBuilder();
+    const selection: TunerSelection = { mode: "auto", targetId: null };
+    let timestampMs = 0;
+
+    const acquire = buildFrame(tracker, interpreter, viewModelBuilder, selection, createCandidate(82.41, 0.86, next()));
+    const warmup = buildFrame(tracker, interpreter, viewModelBuilder, selection, createCandidate(82.40, 0.74, next()));
+    const track = buildFrame(tracker, interpreter, viewModelBuilder, selection, createCandidate(82.42, 0.76, next()));
+    const preLock = buildFrame(tracker, interpreter, viewModelBuilder, selection, createCandidate(82.41, 0.9, next()));
+    const lock = buildFrame(tracker, interpreter, viewModelBuilder, selection, createCandidate(82.41, 0.91, next()));
+    const hold = buildFrame(tracker, interpreter, viewModelBuilder, selection, createNullCandidate(next()));
+    buildFrame(tracker, interpreter, viewModelBuilder, selection, createNullCandidate(next()));
+    const degrade = buildFrame(tracker, interpreter, viewModelBuilder, selection, createNullCandidate(next()));
+    buildFrame(tracker, interpreter, viewModelBuilder, selection, createNullCandidate(next()));
+    buildFrame(tracker, interpreter, viewModelBuilder, selection, createNullCandidate(next()));
+    const lost = buildFrame(tracker, interpreter, viewModelBuilder, selection, createNullCandidate(next()));
+
+    assert.equal(acquire.tracked.stage, "acquiring");
+    assert.equal(warmup.tracked.stage, "acquiring");
+    assert.equal(acquire.interpretation.targetId, null);
+    assert.equal(track.tracked.stage, "tracking");
+    assert.equal(track.viewModel.showSuccess, false);
+    assert.equal(preLock.tracked.stage, "tracking");
+    assert.equal(lock.tracked.stage, "locked");
+    assert.equal(lock.interpretation.targetId, "string-6");
+    assert.equal(hold.tracked.stage, "locked");
+    assert.equal(degrade.tracked.stage, "degraded");
+    assert.equal(degrade.viewModel.displayCents, "Signal fading");
+    assert.equal(lost.tracked.stage, "lost");
+
+    function next() {
+      timestampMs += 75;
+      return timestampMs;
+    }
+  });
+
+  it("keeps manual targeting available before auto targeting would lock", () => {
+    const tracker = new ContinuousPitchTracker();
+    const interpreter = new TuningInterpreter();
+    const viewModelBuilder = new TunerViewModelBuilder();
+    const manualSelection: TunerSelection = { mode: "manual", targetId: "string-6" };
+
+    const frame = buildFrame(
+      tracker,
+      interpreter,
+      viewModelBuilder,
+      manualSelection,
+      createCandidate(110, 0.85, 75),
+    );
+
+    assert.equal(frame.tracked.stage, "acquiring");
+    assert.equal(frame.interpretation.detectedNote, "A2");
+    assert.equal(frame.interpretation.targetId, "string-6");
+    assert.equal(frame.viewModel.displayTarget, null);
+  });
+});
+
+function buildFrame(
+  tracker: ContinuousPitchTracker,
+  interpreter: TuningInterpreter,
+  viewModelBuilder: TunerViewModelBuilder,
+  selection: TunerSelection,
+  candidate: RawPitchCandidate,
+) {
+  const tracked = tracker.update(candidate);
+  const interpretation = interpreter.interpret(tracked, selection);
+  const viewModel = viewModelBuilder.build(interpretation);
+
+  return {
+    tracked,
+    interpretation,
+    viewModel,
+  };
+}
 
 function createCandidate(
-  frequencyHz: number | null,
+  frequencyHz: number,
   clarity: number,
   timestampMs: number,
 ): RawPitchCandidate {
   return {
     frequencyHz,
     clarity,
-    rms: frequencyHz === null ? 0.001 : 0.01,
-    peak: frequencyHz === null ? 0.002 : 0.05,
+    rms: 0.01,
+    peak: 0.05,
     timestampMs,
     algorithm: "yin",
   };
 }
 
-test("pipeline hides target during acquiring and exposes it after lock", () => {
-  const tracker = new ContinuousPitchTracker();
-  const interpreter = new TuningInterpreter();
-  const viewModelBuilder = new TunerViewModelBuilder();
-  const selection: TunerSelection = { mode: "auto", targetId: null };
-
-  const acquiring = tracker.update(createCandidate(82.41, 0.85, 0));
-  const acquiringInterpretation = interpreter.interpret(acquiring, selection);
-  const acquiringViewModel = viewModelBuilder.build(acquiringInterpretation);
-
-  tracker.update(createCandidate(82.4, 0.86, 75));
-  const locked = tracker.update(createCandidate(82.42, 0.87, 150));
-  const lockedInterpretation = interpreter.interpret(locked, selection);
-  const lockedViewModel = viewModelBuilder.build(lockedInterpretation);
-
-  assert.equal(acquiring.stage, "acquiring");
-  assert.equal(acquiringInterpretation.targetId, null);
-  assert.equal(acquiringViewModel.displayTarget, null);
-  assert.equal(acquiringViewModel.displayCents, "检测中");
-
-  assert.equal(locked.stage, "locked");
-  assert.equal(lockedInterpretation.targetId, "string-6");
-  assert.equal(lockedViewModel.displayTarget, "6弦 (E2)");
-});
-
-test("pipeline preserves target context while degraded and then clears it after loss", () => {
-  const tracker = new ContinuousPitchTracker({ releaseAfterMisses: 8 });
-  const interpreter = new TuningInterpreter();
-  const viewModelBuilder = new TunerViewModelBuilder();
-  const selection: TunerSelection = { mode: "auto", targetId: null };
-
-  tracker.update(createCandidate(82.41, 0.85, 0));
-  tracker.update(createCandidate(82.4, 0.86, 75));
-  tracker.update(createCandidate(82.42, 0.87, 150));
-
-  let degraded = tracker.getState();
-  for (let index = 0; index < 4; index += 1) {
-    degraded = tracker.update(createCandidate(null, 0, 225 + index * 75));
-  }
-
-  const degradedInterpretation = interpreter.interpret(degraded, selection);
-  const degradedViewModel = viewModelBuilder.build(degradedInterpretation);
-
-  let lost = degraded;
-  for (let index = 0; index < 4; index += 1) {
-    lost = tracker.update(createCandidate(null, 0, 525 + index * 75));
-  }
-
-  const lostInterpretation = interpreter.interpret(lost, selection);
-  const lostViewModel = viewModelBuilder.build(lostInterpretation);
-
-  assert.equal(degraded.stage, "degraded");
-  assert.equal(degradedInterpretation.targetId, "string-6");
-  assert.equal(degradedViewModel.displayTarget, "6弦 (E2)");
-  assert.equal(degradedViewModel.displayCents, "信号变弱");
-  assert.equal(degradedViewModel.showSuccess, false);
-
-  assert.equal(lost.stage, "lost");
-  assert.equal(lostInterpretation.targetId, null);
-  assert.equal(lostViewModel.displayTarget, null);
-  assert.equal(lostViewModel.showSuccess, false);
-});
-
-test("manual mode keeps target fixed even when detected note differs", () => {
-  const tracker = new ContinuousPitchTracker();
-  const interpreter = new TuningInterpreter();
-  const viewModelBuilder = new TunerViewModelBuilder();
-  const selection: TunerSelection = { mode: "manual", targetId: "string-6" };
-
-  tracker.update(createCandidate(110, 0.85, 0));
-  tracker.update(createCandidate(110, 0.86, 75));
-  const tracked = tracker.update(createCandidate(110, 0.87, 150));
-
-  const interpretation = interpreter.interpret(tracked, selection);
-  const viewModel = viewModelBuilder.build(interpretation);
-
-  assert.equal(tracked.stage, "locked");
-  assert.equal(interpretation.detectedNote, "A2");
-  assert.equal(interpretation.targetId, "string-6");
-  assert.equal(viewModel.displayTarget, "6弦 (E2)");
-  assert.equal(viewModel.showSuccess, false);
-});
+function createNullCandidate(timestampMs: number): RawPitchCandidate {
+  return {
+    frequencyHz: null,
+    clarity: 0,
+    rms: 0.001,
+    peak: 0.002,
+    timestampMs,
+    algorithm: "yin",
+  };
+}

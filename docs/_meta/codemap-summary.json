@@ -1,15 +1,20 @@
 {
-  "generatedAt": "2026-04-13T16:26:44.665Z",
+  "generatedAt": "2026-04-16T17:00:21.401Z",
   "canonicalRoot": "docs/development/00-overview/codemaps/",
-  "totalDomains": 1,
-  "totalSubsystems": 6,
-  "totalTopics": 23,
-  "totalModules": 24,
+  "totalDomains": 2,
+  "totalSubsystems": 7,
+  "totalTopics": 51,
+  "totalModules": 52,
   "byDomain": {
     "frontend": {
       "subsystems": 6,
-      "topics": 23,
-      "modules": 24
+      "topics": 50,
+      "modules": 51
+    },
+    "integrations": {
+      "subsystems": 1,
+      "topics": 1,
+      "modules": 1
     }
   }
 }

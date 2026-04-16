@@ -478,7 +478,6 @@ export function TunerLandingScreen({
   const currentPrompt = getPromptFromState(state);
   const resolvedDebugReadout = buildDebugReadout(state, debugReadout);
   const heroPanel = buildHeroPanelContent(state, resolvedDebugReadout);
-  const liveReading = state.stabilizedPitch ?? state.detectedPitch;
   const trackedFrequencyHz = trackingState?.trackedFrequencyHz ?? rawCandidate?.frequencyHz ?? null;
   const hasActivePitch = typeof trackedFrequencyHz === "number";
   const detectedNoteLabel = displayState.displayNote;

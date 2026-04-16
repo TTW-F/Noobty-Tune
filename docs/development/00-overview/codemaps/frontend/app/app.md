@@ -10,5 +10,5 @@
 - Exports: `App`
 
 ### `app/App.tsx`
-- Imports: `../features/tuner/model`, `../features/tuner/ui/TunerLandingScreen`, `../lib/logging/developerLogger`
+- Imports: `../features/tuner/model`, `../features/tuner/ui/TunerLandingScreen`, `../lib/logging/developerLogger`, `react`
 - Exports: `App`, `default`

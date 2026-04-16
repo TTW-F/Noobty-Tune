@@ -71,7 +71,7 @@ export interface PitchTrackingState {
 export interface TuningInterpretation {
   readonly detectedFrequencyHz: number | null;
   readonly detectedNote: string | null;          // 检测到的音名（可能与目标不同）
-  readonly targetId: string | null;              // 目标弦ID
+  readonly targetId: TuningStringId | null;      // 目标弦ID
   readonly targetFrequencyHz: number | null;     // 目标频率
   readonly centsOffset: number | null;           // 偏差（cents）
   readonly direction: "flat" | "sharp" | "in-tune" | "unknown";
@@ -148,3 +148,4 @@ export const DEFAULT_TRACKER_CONFIG: PitchTrackerConfig = {
   
   maxHistoryFrames: 12,
 };
+import type { TuningStringId } from "./tuner";

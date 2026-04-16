@@ -38,7 +38,7 @@ export function adaptViewModelToDisplay(
   const enhancedTarget = uiStage === "acquiring" ? null : displayTarget;
   const enhancedCents = getEnhancedCents(uiStage, displayCents);
   const statusTone = getStatusTone(uiStage, showSuccess);
-  const coach = getCoachContent(uiStage, displayTarget, displayCents);
+  const coach = getCoachContent(uiStage, displayTarget);
 
   return {
     displayNote,
@@ -116,7 +116,6 @@ function getStatusTone(
 function getCoachContent(
   stage: TunerViewModel["uiStage"],
   displayTarget: string | null,
-  displayCents: string,
 ): { title: string; body: string; tone: "idle" | "active" | "warning" | "success" } {
   switch (stage) {
     case "idle":

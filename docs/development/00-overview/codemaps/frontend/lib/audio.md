@@ -6,5 +6,5 @@
 
 ## Modules
 ### `lib/audio/index.ts`
-- Imports: `./frameCapture`, `./microphoneManager`, `./pitchDetector`, `./pitchStabilizer`
+- Imports: `./audioQualityAnalyzer`, `./continuousPitchTracker`, `./detectionLogger`, `./frameCapture`, `./frequencyHistory`, `./microphoneManager`, `./performanceMonitor`, `./pitchCandidateExtractor`, `./pitchDetector`, `./pitchStabilizer`, `./sustainedPitchStabilizer`, `./waveformAnalyzer`
 - Exports: _none_

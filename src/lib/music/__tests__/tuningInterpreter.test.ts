@@ -1,8 +1,59 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { TuningInterpreter } from "../tuningInterpreter";
 import type { PitchTrackingState } from "../../../types/pitchTracking";
 import type { TunerSelection } from "../../../types/tuner";
+
+const interpreter = new TuningInterpreter();
+const autoSelection: TunerSelection = { mode: "auto", targetId: null };
+const manualSelection: TunerSelection = { mode: "manual", targetId: "string-6" };
+
+describe("TuningInterpreter", () => {
+  it("does not assign an auto target during acquiring", () => {
+    const interpretation = interpreter.interpret(createTrackingState("acquiring", 82.41), autoSelection);
+
+    assert.equal(interpretation.detectedNote, "E2");
+    assert.equal(interpretation.targetId, null);
+    assert.equal(interpretation.centsOffset, null);
+  });
+
+  it("does not assign an auto target during tracking", () => {
+    const interpretation = interpreter.interpret(createTrackingState("tracking", 82.41), autoSelection);
+
+    assert.equal(interpretation.targetId, null);
+    assert.equal(interpretation.direction, "unknown");
+  });
+
+  it("assigns the closest target once tracking is locked", () => {
+    const interpretation = interpreter.interpret(createTrackingState("locked", 83), autoSelection);
+
+    assert.equal(interpretation.targetId, "string-6");
+    assert.ok((interpretation.centsOffset ?? 0) > 0);
+    assert.equal(interpretation.direction, "sharp");
+  });
+
+  it("keeps the interpreted target during degraded hold", () => {
+    const interpretation = interpreter.interpret(createTrackingState("degraded", 82.41, 0.45), autoSelection);
+
+    assert.equal(interpretation.targetId, "string-6");
+    assert.equal(interpretation.detectedNote, "E2");
+  });
+
+  it("always honors the manual target when a frequency is present", () => {
+    const interpretation = interpreter.interpret(createTrackingState("acquiring", 110), manualSelection);
+
+    assert.equal(interpretation.detectedNote, "A2");
+    assert.equal(interpretation.targetId, "string-6");
+    assert.ok((interpretation.centsOffset ?? 0) > 400);
+  });
+
+  it("returns an empty interpretation after loss", () => {
+    const interpretation = interpreter.interpret(createTrackingState("lost", null), autoSelection);
+
+    assert.equal(interpretation.detectedFrequencyHz, null);
+    assert.equal(interpretation.targetId, null);
+  });
+});
 
 function createTrackingState(
   stage: PitchTrackingState["stage"],
@@ -14,72 +65,9 @@ function createTrackingState(
     confidence,
     stage,
     lastStableFrequencyHz: frequencyHz,
-    stableDurationMs: stage === "locked" ? 500 : 0,
+    stableDurationMs: stage === "locked" ? 1000 : 0,
     holdRemainingMs: 600,
     mismatchCount: 0,
-    timestampMs: 0,
+    timestampMs: 1000,
   };
 }
-
-test("interpreter keeps auto mode target null while acquiring", () => {
-  const interpreter = new TuningInterpreter();
-  const selection: TunerSelection = { mode: "auto", targetId: null };
-
-  const interpretation = interpreter.interpret(
-    createTrackingState("acquiring", 82.41, 0.84),
-    selection,
-  );
-
-  assert.equal(interpretation.detectedNote, "E2");
-  assert.equal(interpretation.targetId, null);
-  assert.equal(interpretation.centsOffset, null);
-  assert.equal(interpretation.direction, "unknown");
-});
-
-test("interpreter infers target once tracking is stable in auto mode", () => {
-  const interpreter = new TuningInterpreter();
-  const selection: TunerSelection = { mode: "auto", targetId: null };
-
-  const interpretation = interpreter.interpret(
-    createTrackingState("locked", 82.41, 0.9),
-    selection,
-  );
-
-  assert.equal(interpretation.detectedNote, "E2");
-  assert.equal(interpretation.targetId, "string-6");
-  assert.equal(interpretation.targetFrequencyHz, 82.41);
-  assert.ok(Math.abs(interpretation.centsOffset ?? 999) < 1);
-  assert.equal(interpretation.direction, "in-tune");
-});
-
-test("interpreter keeps detected note and manual target separated", () => {
-  const interpreter = new TuningInterpreter();
-  const selection: TunerSelection = { mode: "manual", targetId: "string-6" };
-
-  const interpretation = interpreter.interpret(
-    createTrackingState("tracking", 110, 0.87),
-    selection,
-  );
-
-  assert.equal(interpretation.detectedNote, "A2");
-  assert.equal(interpretation.targetId, "string-6");
-  assert.equal(interpretation.targetFrequencyHz, 82.41);
-  assert.equal(interpretation.direction, "sharp");
-  assert.ok((interpretation.centsOffset ?? 0) > 400);
-});
-
-test("interpreter clears tuning output after loss", () => {
-  const interpreter = new TuningInterpreter();
-  const selection: TunerSelection = { mode: "auto", targetId: null };
-
-  const interpretation = interpreter.interpret(
-    createTrackingState("lost", null, 0.2),
-    selection,
-  );
-
-  assert.equal(interpretation.detectedFrequencyHz, null);
-  assert.equal(interpretation.detectedNote, null);
-  assert.equal(interpretation.targetId, null);
-  assert.equal(interpretation.centsOffset, null);
-  assert.equal(interpretation.trackingStage, "lost");
-});

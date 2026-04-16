@@ -38,6 +38,7 @@
 - `requesting-permission`
 - `permission-denied`
 - `listening`
+- `signal-weak`
 - `no-signal`
 - `detecting`
 - `unstable`
@@ -46,8 +47,8 @@
 
 说明：
 
-- `no-signal` 在 UI 映射层已定义。
-- 当前主 Hook 没有显式写入 `no-signal`，实际展示取决于上游状态机后续演进。
+- `signal-weak` 与 `no-signal` 在 UI 映射层均有明确文案。
+- 当前主 Hook 已在“有能量但无可用频率”场景映射这两个状态，实际会进入对应提示分支。
 
 ## 5. Debug Readout
 
@@ -60,7 +61,7 @@
    - `primary` / `secondary` 算法频率与清晰度
    - `detectorDeltaHz`
 
-注意：页面当前默认传入的是主链路数据；对比读数字段预留但未在主 Hook 中完整填充。
+注意：页面当前默认传入主链路数据，且主 Hook 已填充 detector comparison 所需核心字段（primary/secondary 频率与 delta）。
 
 ## 6. Developer Log Console
 
@@ -75,7 +76,7 @@
 
 ## 7. Error and Recovery
 
-在 `permission-denied` 或 `error` 状态下会显示“重置状态”按钮：
+在会话已启动（非 `idle/requesting-permission`）时会显示“重置会话”按钮：
 
 - 点击后执行 `onReset`（`resetSession`）
 - 重置会停止循环、释放音频资源，并回到 `INITIAL_TUNER_STATE`
@@ -93,13 +94,19 @@
 
 仓库中仍存在 `src/index.css` 与 `src/App.css`，但当前入口未引入，属于遗留样式文件，不参与当前页面渲染。
 
-## 9. UX Limits
+## 9. Targeting Interaction (Current)
 
-- 目前没有手动选弦交互控件（已支持手动选输入源）。
-- 状态反馈依赖文字与 debug 卡片，尚未提供仪表化可视组件。
+- 默认目标模式为 auto。
+- 页面在 `Advanced targeting` 区域提供手动目标弦入口，可切换到 manual 并选择标准六弦目标。
+- manual 入口默认折叠，避免干扰主路径；更适合排障与实验场景。
+
+## 10. UX Limits
+
+- 手动目标模式尚未持久化（刷新后回到默认 auto）。
+- 状态反馈已包含主视觉仪表（音符主卡 + 指针 + 引导面板），但仍偏开发验证导向。
 - 页面已引入开发日志面板，当前文案和结构仍偏开发验证导向。
 
-## 10. Evidence Paths
+## 11. Evidence Paths
 
 - `src/features/tuner/ui/TunerLandingScreen.tsx`
 - `src/components/PageShell.tsx`

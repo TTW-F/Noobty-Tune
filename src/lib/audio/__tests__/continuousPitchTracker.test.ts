@@ -55,16 +55,20 @@ describe("ContinuousPitchTracker", () => {
     const firstMiss = tracker.update(createNullCandidate(nextTimestamp()));
     const secondMiss = tracker.update(createNullCandidate(nextTimestamp()));
     const thirdMiss = tracker.update(createNullCandidate(nextTimestamp()));
+    const fourthMiss = tracker.update(createNullCandidate(nextTimestamp()));
+    tracker.update(createNullCandidate(nextTimestamp()));
     const lost = tracker.update(createNullCandidate(nextTimestamp()));
 
     assert.equal(firstMiss.stage, "locked");
-    assert.equal(secondMiss.stage, "degraded");
+    assert.equal(secondMiss.stage, "locked");
     assert.equal(thirdMiss.stage, "degraded");
+    assert.equal(fourthMiss.stage, "degraded");
     assert.equal(lost.stage, "lost");
   });
 
   it("recovers from degraded into tracking when continuity returns", () => {
     lockTracker();
+    tracker.update(createNullCandidate(nextTimestamp()));
     tracker.update(createNullCandidate(nextTimestamp()));
     tracker.update(createNullCandidate(nextTimestamp()));
 

@@ -122,7 +122,7 @@ interface PitchTrackingState {
 interface TuningInterpretation {
   detectedFrequencyHz: number | null;
   detectedNote: string | null;          // 检测到的音名
-  targetId: string | null;              // 目标弦ID
+  targetId: TuningStringId | null;      // 目标弦ID
   targetFrequencyHz: number | null;
   centsOffset: number | null;
   direction: "flat" | "sharp" | "in-tune" | "unknown";

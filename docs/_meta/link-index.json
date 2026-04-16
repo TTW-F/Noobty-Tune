@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-14",
+  "generated_at": "2026-04-17",
   "scope": "docs/**/*.md (exclude parts: ['_backup'])",
   "documents": [
     {
@@ -7,21 +7,21 @@
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/_meta/docs-contract.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/_meta/docs-diff-sync-report-2026-04-13.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/_meta/docs-index-legacy.md",
@@ -43,77 +43,87 @@
         "../adr/0005-auto-target-string-for-v1.md"
       ],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/_meta/docs-path-mapping-and-migration-plan-2026-04-13.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/_meta/docs-structure-audit-2026-04-13.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/_meta/docs-sync-checklist.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 0,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/_meta/skills-for-this-stage.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/adr/0001-web-v1-scope.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/adr/0002-browser-audio-local-first.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/adr/0003-audioworklet-preferred-architecture.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/adr/0004-yin-as-default-pitch-detection-candidate.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/adr/0005-auto-target-string-for-v1.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./PITCH_TRACKER_CONFIG.md",
+        "./DEBUGGING.md"
+      ],
+      "incoming_count": 4,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/CODEMAPS/frontend.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/CODEMAPS/INDEX.md",
@@ -122,14 +132,25 @@
         "./frontend.md"
       ],
       "incoming_count": 0,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/DEBUGGING.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./ARCHITECTURE.md",
+        "./PITCH_TRACKER_CONFIG.md",
+        "./QUICK_START.md"
+      ],
+      "incoming_count": 2,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/app/app.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/app/index.md",
@@ -139,21 +160,28 @@
         "./index.md"
       ],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/components/debug-readout-card.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/components/developer-log-console.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/components/enhanced-debug-panel.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/components/INDEX.md",
@@ -161,33 +189,34 @@
       "outgoing_links": [
         "./debug-readout-card.md",
         "./developer-log-console.md",
+        "./enhanced-debug-panel.md",
         "./page-shell.md",
         "./primary-button.md",
         "./status-card.md"
       ],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/components/page-shell.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/components/primary-button.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/components/status-card.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/features/INDEX.md",
@@ -195,39 +224,71 @@
       "outgoing_links": [
         "./model.md",
         "./model-tuner-state.md",
+        "./model-tuner-state-test.md",
+        "./model-tuner-view-model.md",
         "./model-use-tuner-prototype.md",
+        "./tests-tuner-view-model-test.md",
+        "./ui-tuner-display-adapter.md",
         "./ui-tuner-landing-screen.md"
       ],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/features/model-tuner-state-test.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/features/model-tuner-state.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/features/model-tuner-view-model.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/features/model-use-tuner-prototype.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/features/model.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/features/tests-tuner-view-model-test.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/features/ui-tuner-display-adapter.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/features/ui-tuner-landing-screen.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/INDEX.md",
@@ -241,87 +302,255 @@
         "./types/INDEX.md"
       ],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-audio-quality-analyzer-test.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-audio-quality-analyzer.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-continuous-pitch-tracker-test.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-continuous-pitch-tracker.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-detection-logger.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/lib/audio-frame-capture.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-frequency-history.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/lib/audio-microphone-manager.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-performance-monitor-test.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-performance-monitor.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-pitch-candidate-extractor.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/lib/audio-pitch-detector.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-pitch-stabilizer-test.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/lib/audio-pitch-stabilizer.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-sustained-pitch-stabilizer.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/audio-waveform-analyzer.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/lib/audio.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/config-tuner-config-test.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/config-tuner-config.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/config.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/lib/INDEX.md",
       "status": "ok",
       "outgoing_links": [
         "./audio.md",
+        "./audio-audio-quality-analyzer.md",
+        "./audio-audio-quality-analyzer-test.md",
+        "./audio-continuous-pitch-tracker.md",
+        "./audio-continuous-pitch-tracker-test.md",
+        "./audio-detection-logger.md",
         "./audio-frame-capture.md",
+        "./audio-frequency-history.md",
         "./audio-microphone-manager.md",
+        "./audio-performance-monitor.md",
+        "./audio-performance-monitor-test.md",
+        "./audio-pitch-candidate-extractor.md",
         "./audio-pitch-detector.md",
         "./audio-pitch-stabilizer.md",
+        "./audio-pitch-stabilizer-test.md",
+        "./audio-sustained-pitch-stabilizer.md",
+        "./audio-waveform-analyzer.md",
+        "./config.md",
+        "./config-tuner-config.md",
+        "./config-tuner-config-test.md",
+        "./logging.md",
         "./logging-developer-logger.md",
+        "./logging-time-series-logger.md",
         "./music.md",
         "./music-note-mapping.md",
-        "./music-standard-tuning.md"
+        "./music-note-mapping-test.md",
+        "./music-standard-tuning.md",
+        "./music-tuning-interpreter.md",
+        "./tests-continuous-pitch-tracker-test.md",
+        "./tests-tuning-interpreter-test.md"
       ],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/lib/logging-developer-logger.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/logging-time-series-logger.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/logging.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/music-note-mapping-test.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/lib/music-note-mapping.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/lib/music-standard-tuning.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/music-tuning-interpreter.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/lib/music.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/tests-continuous-pitch-tracker-test.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/lib/tests-tuning-interpreter-test.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/main/INDEX.md",
@@ -330,47 +559,81 @@
         "./main.md"
       ],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/main/main.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/types/index.md",
       "status": "ok",
       "outgoing_links": [
         "./index.md",
+        "./pitch-tracking.md",
         "./tuner.md"
       ],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/frontend/types/pitch-tracking.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/frontend/types/tuner.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/00-overview/codemaps/INDEX.md",
       "status": "ok",
       "outgoing_links": [
-        "./frontend/INDEX.md"
+        "./frontend/INDEX.md",
+        "./integrations/INDEX.md"
       ],
       "incoming_count": 0,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/integrations/INDEX.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./tests/INDEX.md"
+      ],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/integrations/tests/INDEX.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./integration-tuner-data-flow-test.md"
+      ],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/00-overview/codemaps/integrations/tests/integration-tuner-data-flow-test.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/30-modules/audio-and-detection-current.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/30-modules/README.md",
@@ -382,119 +645,155 @@
         "./type-contracts-current.md"
       ],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/30-modules/tuner-implementation-current.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/30-modules/type-contracts-current.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/30-modules/ui-and-interaction-current.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/implementation-checklist-m1.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/implementation-plan-m1.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/m2-real-device-validation-log.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 0,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/milestones-web-v1.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/technical-design-web-v1.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/test-plan-web-v1.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/v1-delivery-classification-2026-04-14.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 0,
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/development/v1-scope-deviation-note-2026-04-14.md",
+      "status": "ok",
+      "outgoing_links": [],
+      "incoming_count": 0,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/development/wbs-web-v1.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/operations/deploy.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/operations/git.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/operations/handover-deployment-status.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 1,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/PITCH_TRACKER_CONFIG.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./ARCHITECTURE.md",
+        "./DEBUGGING.md"
+      ],
+      "incoming_count": 5,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/product-or-design/analysis-web-v1.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/product-or-design/prd-web-v1.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/product-or-design/ui-spec-web-v1.md",
       "status": "ok",
       "outgoing_links": [],
       "incoming_count": 2,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/QUICK_START.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./PITCH_TRACKER_CONFIG.md",
+        "./ARCHITECTURE.md",
+        "./PITCH_TRACKER_CONFIG.md",
+        "./REFACTORING_SUMMARY.md"
+      ],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     },
     {
       "path": "docs/README.md",
@@ -533,7 +832,17 @@
         "./_backup/2026-04-13/README.md"
       ],
       "incoming_count": 0,
-      "last_checked_at": "2026-04-14"
+      "last_checked_at": "2026-04-17"
+    },
+    {
+      "path": "docs/REFACTORING_SUMMARY.md",
+      "status": "ok",
+      "outgoing_links": [
+        "./ARCHITECTURE.md",
+        "./PITCH_TRACKER_CONFIG.md"
+      ],
+      "incoming_count": 1,
+      "last_checked_at": "2026-04-17"
     }
   ]
 }

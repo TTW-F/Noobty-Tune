@@ -6,5 +6,5 @@
 
 ## Modules
 ### `lib/music/index.ts`
-- Imports: `./noteMapping`, `./standardTuning`
+- Imports: `./noteMapping`, `./standardTuning`, `./tuningInterpreter`
 - Exports: _none_

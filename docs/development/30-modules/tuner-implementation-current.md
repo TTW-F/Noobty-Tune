@@ -21,15 +21,17 @@
 2. `BrowserMicrophoneManager.start()` 请求麦克风权限并初始化 `AudioContext`
 3. `AnalyserTimeDomainFrameCapture.readFrame()` 读取时域音频帧
 4. `YinPitchDetector.detect()` 输出候选音高（或 `null`）
-5. `RollingPitchStabilizer.push()` 进行多帧稳定化
-6. `resolveActiveTarget()` 计算当前目标弦（默认自动）
-7. `resolveDeviation()` 计算 cents 偏差与方向
-8. UI 根据 `TunerState` 渲染状态与调试读数
+5. `ContinuousPitchTracker.update()` 进行连续跟踪与锁定状态机判断
+6. `TuningInterpreter.interpret()` 计算目标弦与偏差解释（自动/手动模式）
+7. `TunerViewModelBuilder.build()` 产出 UI 视图模型
+8. `mapViewModelStageToLegacyUiStatus()` 映射回兼容状态并写入 `TunerState`
+9. UI 根据 `TunerState + TunerViewModel` 渲染主界面与调试读数
 
 补充（最新变更）：
 
-9. 页面支持列出可用麦克风输入源，并允许用户手动选择输入设备
-10. 选定设备后，后续启动调音会优先使用该输入源
+10. 页面支持列出可用麦克风输入源，并允许用户手动选择输入设备
+11. 选定设备后，后续启动调音会优先使用该输入源
+12. 页面提供手动目标弦锁定入口（默认仍为自动目标）
 
 ## 4. Audio and Detection Parameters
 
@@ -57,12 +59,14 @@
 
 ## 5. State Model (Observed)
 
-当前代码可到达的 UI 状态：
+当前代码可到达的 UI 状态（`TunerState.uiStatus`）：
 
 - `idle`
 - `requesting-permission`
 - `permission-denied`
 - `listening`
+- `signal-weak`
+- `no-signal`
 - `detecting`
 - `unstable`
 - `in-tune`
@@ -70,15 +74,39 @@
 
 说明：
 
-- `no-signal` 类型已定义，但当前 Hook 未显式切换到该状态。
-- 页面错误恢复依赖 “重置状态” 按钮（在 `permission-denied` / `error` 时展示）。
+- 当音频能量存在但未检测到可用频率时，Hook 会根据 RMS 映射到 `signal-weak` 或 `no-signal`。
+- 页面错误恢复依赖 “重置会话” 按钮（在非 idle/requesting-permission 状态可用）。
 
 ## 6. Target and Deviation Logic
 
-- 目标弦来源优先级：手动选择（若有） -> 稳定化 target -> 候选音高最近目标
-- 当前 UI 未提供手动选弦入口，实际运行以自动目标为主
-- 偏差计算：`getCentsOffset(reading.frequencyHz, target.frequencyHz)`
-- 方向判定：`flat / in-tune / sharp`（默认 `inTuneTolerance = 5` cents）
+- 目标弦来源优先级：手动选择（若有） -> `TuningInterpretation.targetId` -> 无目标
+- UI 默认自动目标，并在 Advanced targeting 中提供手动选弦入口
+- 偏差计算来自 `TuningInterpreter.interpret()` 输出的 `centsOffset`
+- 方向判定沿用 `flat / in-tune / sharp / unknown`
+
+### 6.1 `src/lib/music/tuningInterpreter.ts` 当前实现边界
+
+已实现（代码事实）：
+
+- 自动模式在 `locked/degraded` 阶段按最近标准弦计算 `targetId` 与偏差。
+- 自动模式在 `acquiring/tracking` 阶段仅输出检测音名，不分配目标弦（`targetId=null`）。
+- 手动模式在存在 `selection.targetId` 时强制按该目标弦解释偏差。
+- `idle/lost` 或 `trackedFrequencyHz=null` 时返回空解释（`detectedFrequencyHz/targetId/centsOffset` 为空）。
+
+未实现（当前边界）：
+
+- 非标准六弦调弦规则（alternate tuning）下的解释策略。
+- 基于历史上下文的目标弦连续性约束（当前按单次 tracking 输入解释）。
+
+已知限制：
+
+- `in-tune` 阈值固定为 `5 cents`，尚未按设备或场景动态调整。
+- 若上游 tracking 频率抖动大，解释层会直接反映抖动，不做二次平滑。
+
+未验证项：
+
+- manual/auto 快速切换时，解释输出在弱信号边界下的稳定性。
+- `degraded` 阶段长期保持后重新锁定的目标连续性体验（需真机回归）。
 
 ## 7. What Is Implemented vs Not
 
@@ -86,14 +114,15 @@
 
 - 浏览器本地音频处理（无后端音频上传链路）
 - 标准六弦目标映射（E2 A2 D3 G3 B3 E4）
-- 候选检测 + 稳定化 + 偏差方向基本闭环
+- 候选检测 + 连续跟踪 + 调音解释 + 视图模型闭环
 - 调试读数面板（频率、音名、cents、clarity、sampleCount）
 - 麦克风输入源刷新与手动选择（device picker）
+- 手动目标弦锁定入口（Advanced targeting）
 - 开发日志控制台（permission/audio/detector 等事件时间线）
 
 ### 7.2 Not implemented
 
-- 手动目标弦切换 UI（与输入源选择是两件事）
+- 目标模式的持久化策略（刷新后仍恢复上次手动目标）
 - alternate tuning（降半音、开放和弦等）
 - 多乐器模式
 - AudioWorklet 版本检测链路
@@ -102,9 +131,9 @@
 ## 8. Known Limits and Risks
 
 - 低信噪比环境下，候选值可能频繁中断，导致稳定化窗口反复重置。
-- `setInterval(75ms)` 轮询在不同设备上的时序精度存在差异。
+- `setInterval(75ms)` 轮询在不同设备上的时序精度存在差异，可能影响锁定体验一致性。
 - 当前参数以“可用原型”为目标，尚未按多设备样本系统标定。
-- 状态定义与实际切换存在轻微不一致（如 `no-signal` 未实际触发）。
+- 旧 `uiStatus` 与新 `viewModel.uiStage` 并行维护，存在双状态映射复杂度。
 
 ## 9. Verification Checklist
 
@@ -125,7 +154,8 @@
 - `src/lib/audio/microphoneManager.ts`
 - `src/lib/audio/frameCapture.ts`
 - `src/lib/audio/pitchDetector.ts`
-- `src/lib/audio/pitchStabilizer.ts`
+- `src/lib/audio/continuousPitchTracker.ts`
+- `src/features/tuner/model/tunerViewModel.ts`
 - `src/lib/music/noteMapping.ts`
 - `src/lib/music/standardTuning.ts`
 - `src/types/tuner.ts`
