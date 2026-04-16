@@ -479,26 +479,32 @@ export function TunerLandingScreen({
   const resolvedDebugReadout = buildDebugReadout(state, debugReadout);
   const heroPanel = buildHeroPanelContent(state, resolvedDebugReadout);
   const liveReading = state.stabilizedPitch ?? state.detectedPitch;
-  const hasActivePitch = Boolean(liveReading && typeof liveReading.frequencyHz === "number");
+  const trackedFrequencyHz = trackingState?.trackedFrequencyHz ?? rawCandidate?.frequencyHz ?? null;
+  const hasActivePitch = typeof trackedFrequencyHz === "number";
   const detectedNoteLabel = displayState.displayNote;
-  const detectedNoteStatus = state.stabilizedPitch
-    ? "Stable reading"
-    : state.detectedPitch
-      ? "Live reading"
-      : "Waiting for pitch";
+  const detectedNoteStatus =
+    resolvedViewModel.uiStage === "locked"
+      ? "Locked reading"
+      : resolvedViewModel.uiStage === "degraded"
+        ? "Held reading"
+        : resolvedViewModel.uiStage === "tracking" || resolvedViewModel.uiStage === "acquiring"
+          ? "Live reading"
+          : "Waiting for pitch";
   const targetNoteLabel = displayState.displayTarget ?? "Auto";
   const targetStatus = displayState.stageLabel;
   const confidenceLabel =
-    typeof liveReading?.clarity === "number" ? `${Math.round(liveReading.clarity * 100)}% clarity` : "Clarity --";
+    typeof trackingState?.confidence === "number"
+      ? `${Math.round(trackingState.confidence * 100)}% confidence`
+      : typeof rawCandidate?.clarity === "number"
+        ? `${Math.round(rawCandidate.clarity * 100)}% clarity`
+        : "Confidence --";
   const sampleLabel =
-    typeof state.stabilizedPitch?.sampleCount === "number"
-      ? `${state.stabilizedPitch.sampleCount} samples`
-      : "Samples --";
+    trackingState ? `${trackingState.stage} stage` : "Stage --";
   const isListening =
     state.audioStatus === "listening" || state.audioStatus === "ready" || state.audioStatus === "suspended";
   const canResetSession =
     state.audioStatus !== "idle" && state.audioStatus !== "requesting-permission";
-  const centsValue = resolvedViewModel.needlePosition * 50;
+  const centsValue = interpretation?.centsOffset ?? resolvedViewModel.needlePosition * 50;
   const needleOffset = displayState.needleActive ? mapCentsToNeedleOffset(centsValue) : 0;
   const inputMeter = getInputMeterState(resolvedDebugReadout.frameRms);
   const rescueCard = buildRescueCardContent(state, resolvedDebugReadout.frameRms, activeInputLabel);
@@ -508,12 +514,20 @@ export function TunerLandingScreen({
   const activeManualTarget = STANDARD_GUITAR_TUNING.find((target) => target.id === state.selection.targetId) ?? null;
   const showSuccessPanel = shouldShowSuccessPanel(resolvedViewModel) && hasActivePitch;
   const showDegradedWarning = shouldShowDegradedWarning(resolvedViewModel);
-  const noteMatchesTarget = hasActivePitch && detectedNoteLabel === targetNoteLabel;
+  const targetNoteCode = state.activeTarget ? `${state.activeTarget.note}${state.activeTarget.octave}` : null;
+  const noteMatchesTarget =
+    !interpretation?.targetId || !targetNoteCode || interpretation.detectedNote === targetNoteCode;
   const closenessPercent =
     typeof centsValue === "number" ? Math.round((1 - clamp(Math.abs(centsValue) / 25, 0, 1)) * 100) : 0;
   const tuningCoachTitle = !hasActivePitch
     ? "No stable pitch yet"
-    : !noteMatchesTarget
+    : resolvedViewModel.uiStage === "acquiring"
+      ? "Listening for a stable note"
+      : resolvedViewModel.uiStage === "tracking"
+        ? "Following the note without locking a target yet"
+        : resolvedViewModel.uiStage === "degraded"
+          ? "Signal is fading"
+          : !noteMatchesTarget
       ? "You are on a different note than the current target"
       : displayState.showSuccess
         ? "This string is inside the tune window"
@@ -524,7 +538,13 @@ export function TunerLandingScreen({
             : "Keep the note ringing";
   const tuningCoachBody = !hasActivePitch
     ? "Pluck one string by itself and let it sustain long enough for the tuner to lock."
-    : !noteMatchesTarget
+    : resolvedViewModel.uiStage === "acquiring"
+      ? "The tuner has a candidate, but it is not stable enough to name a target string yet."
+      : resolvedViewModel.uiStage === "tracking"
+        ? "Continuity is forming, but auto target selection is still being held back until the note settles."
+        : resolvedViewModel.uiStage === "degraded"
+          ? "Tracking is still active, but the sustain is weakening. Re-pluck if the signal keeps fading."
+          : !noteMatchesTarget
       ? `Detected ${detectedNoteLabel}, but the target is ${targetNoteLabel}. Re-pluck one isolated string before adjusting.`
       : displayState.showSuccess
         ? "Hold the note steady. If the needle stays centered, move on to the next string."
@@ -541,7 +561,7 @@ export function TunerLandingScreen({
     ? `String ${state.activeTarget.label} is in tune`
     : "Current string is in tune";
   const successTrustLabel =
-    inputMeter.tone === "active" && typeof liveReading?.clarity === "number" && liveReading.clarity >= 0.9
+    inputMeter.tone === "active" && typeof trackingState?.confidence === "number" && trackingState.confidence >= 0.9
       ? "Strong lock"
       : inputMeter.tone === "warning"
         ? "Tune looks right, but input is weak"
