@@ -7,6 +7,10 @@ export function App() {
   const logs = useDeveloperLogs();
   const {
     state,
+    rawCandidate,
+    trackingState,
+    interpretation,
+    viewModel,
     detectorComparison,
     availableInputs,
     selectedInputDeviceId,
@@ -28,29 +32,30 @@ export function App() {
       (window as any).tunerDebug = debugLogger;
     }
   }, [debugLogger]);
-  
-  const reading = state.stabilizedPitch ?? state.detectedPitch;
+
+  const reading = trackingState?.trackedFrequencyHz
+    ? state.stabilizedPitch
+    : state.detectedPitch;
   const debugReadout = {
     audioStatus: state.audioStatus,
-    frequencyHz: reading?.frequencyHz ?? null,
-    noteLabel:
-      reading?.noteName && typeof reading.octave === "number"
-        ? `${reading.noteName}${reading.octave}`
-        : null,
-    cents: state.deviation?.cents ?? reading?.cents ?? null,
-    targetLabel: state.activeTarget
-      ? `${state.activeTarget.label} / ${state.activeTarget.note}${state.activeTarget.octave}`
-      : state.selection.mode === "auto"
-        ? "Auto"
-        : state.selection.targetId,
-    clarity: reading?.clarity ?? null,
-    sampleCount: state.stabilizedPitch?.sampleCount ?? null,
-    source: reading?.source ?? null,
+    frequencyHz: trackingState?.trackedFrequencyHz ?? rawCandidate?.frequencyHz ?? null,
+    noteLabel: interpretation?.detectedNote ?? null,
+    cents: interpretation?.centsOffset ?? null,
+    targetLabel: viewModel.displayTarget
+      ? viewModel.displayTarget
+      : state.activeTarget
+        ? `${state.activeTarget.label} / ${state.activeTarget.note}${state.activeTarget.octave}`
+        : state.selection.mode === "auto"
+          ? "Auto"
+          : state.selection.targetId,
+    clarity: trackingState?.confidence ?? rawCandidate?.clarity ?? null,
+    sampleCount: trackingState?.stage === "locked" ? 3 : null,
+    source: reading?.source ?? (rawCandidate?.frequencyHz ? "microphone" : null),
     frameRms: detectorComparison.frameRms,
     primaryAlgorithm: detectorComparison.primaryAlgorithm,
     primaryFrequencyHz: detectorComparison.primaryFrequencyHz,
     primaryClarity: detectorComparison.primaryClarity,
-    primaryNoteLabel: detectorComparison.primaryNoteLabel,
+    primaryNoteLabel: interpretation?.detectedNote ?? detectorComparison.primaryNoteLabel,
     secondaryAlgorithm: detectorComparison.secondaryAlgorithm,
     secondaryFrequencyHz: detectorComparison.secondaryFrequencyHz,
     secondaryClarity: detectorComparison.secondaryClarity,
@@ -61,6 +66,10 @@ export function App() {
   return (
     <TunerLandingScreen
       state={state}
+      rawCandidate={rawCandidate}
+      trackingState={trackingState}
+      interpretation={interpretation}
+      viewModel={viewModel}
       isStarting={isStarting}
       onStart={startTuning}
       onReset={resetSession}

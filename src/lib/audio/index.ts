@@ -3,6 +3,8 @@ export * from "./frameCapture";
 export * from "./pitchDetector";
 export * from "./pitchStabilizer";
 export * from "./sustainedPitchStabilizer";
+export * from "./pitchCandidateExtractor";
+export * from "./continuousPitchTracker";
 export * from "./performanceMonitor";
 export * from "./audioQualityAnalyzer";
 export * from "./frequencyHistory";

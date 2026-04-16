@@ -3,33 +3,80 @@ import {
   AutoCorrelationPitchDetector,
   type AudioInputDevice,
   BrowserMicrophoneManager,
-  type MicrophoneSession,
-  SustainedPitchStabilizer,
-  YinPitchDetector,
+  ContinuousPitchTracker,
+  extractPitchCandidate,
   globalDetectionLogger,
+  type MicrophoneSession,
+  YinPitchDetector,
 } from "../../../lib/audio";
-import type { TunerEngineError, TunerState, TuningStringId } from "../../../types";
+import { createScopedLogger } from "../../../lib/logging/developerLogger";
+import { globalTimeSeriesLogger } from "../../../lib/logging/timeSeriesLogger";
+import {
+  createDeviationFromCents,
+  getClosestNoteMatch,
+  getStandardTuningTarget,
+  TuningInterpreter,
+} from "../../../lib/music";
+import type {
+  PitchReading,
+  StabilizedPitchReading,
+  TunerEngineError,
+  TunerState,
+  TuningStringId,
+  TuningTarget,
+} from "../../../types";
+import type {
+  PitchTrackingState,
+  RawPitchCandidate,
+  TuningInterpretation,
+  TunerViewModel,
+} from "../../../types/pitchTracking";
 import {
   DEFAULT_TUNER_SELECTION,
   createListeningState,
   createPermissionDeniedState,
   createTunerStateSnapshot,
-  getSelectedTarget,
   INITIAL_TUNER_STATE,
-  resolveActiveTarget,
-  resolveDeviation,
 } from "./tunerState";
-import { createScopedLogger } from "../../../lib/logging/developerLogger";
+import { createEmptyViewModel, TunerViewModelBuilder } from "./tunerViewModel";
 
 const appLogger = createScopedLogger("app");
 const uiLogger = createScopedLogger("ui");
 const frameLogger = createScopedLogger("frame");
 const detectorLogger = createScopedLogger("detector");
 const stabilizerLogger = createScopedLogger("stabilizer");
-const WEAK_SIGNAL_RMS = 0.0008;
-const WEAK_SIGNAL_PEAK = 0.01;
 const SIGNAL_PRESENT_RMS = 0.003;
 const SIGNAL_PRESENT_PEAK = 0.03;
+
+function mapViewModelStageToLegacyUiStatus(
+  viewModel: TunerViewModel,
+  candidate: RawPitchCandidate,
+  signalPresent: boolean,
+): TunerState["uiStatus"] {
+  if (viewModel.showSuccess) {
+    return "in-tune";
+  }
+
+  switch (viewModel.uiStage) {
+    case "acquiring":
+    case "tracking":
+    case "locked":
+      return "detecting";
+    case "degraded":
+      return "unstable";
+    case "permission-denied":
+      return "permission-denied";
+    case "error":
+      return "error";
+    case "idle":
+    case "lost":
+    default:
+      if (signalPresent && candidate.frequencyHz === null) {
+        return candidate.rms < SIGNAL_PRESENT_RMS * 1.5 ? "signal-weak" : "no-signal";
+      }
+      return "listening";
+  }
+}
 
 function toTunerEngineError(error: unknown): TunerEngineError {
   if (
@@ -63,6 +110,64 @@ function toDebugNoteLabel(noteName?: string, octave?: number) {
   }
 
   return `${noteName}${octave}`;
+}
+
+function getTargetFromInterpretation(
+  interpretation: TuningInterpretation,
+  selection: TunerState["selection"],
+): TuningTarget | null {
+  if (selection.mode === "manual" && selection.targetId) {
+    return getStandardTuningTarget(selection.targetId);
+  }
+
+  if (!interpretation.targetId) {
+    return null;
+  }
+
+  return getStandardTuningTarget(interpretation.targetId);
+}
+
+function toPitchReading(candidate: RawPitchCandidate): PitchReading | null {
+  if (candidate.frequencyHz === null) {
+    return null;
+  }
+
+  const noteMatch = getClosestNoteMatch(candidate.frequencyHz);
+
+  return {
+    frequencyHz: candidate.frequencyHz,
+    clarity: candidate.clarity,
+    timestampMs: candidate.timestampMs,
+    source: "microphone",
+    rms: candidate.rms,
+    noteName: noteMatch?.note,
+    octave: noteMatch?.octave,
+    cents: noteMatch?.cents,
+  };
+}
+
+function toTrackedReading(
+  trackingState: PitchTrackingState,
+  interpretation: TuningInterpretation,
+  activeTarget: TuningTarget | null,
+): StabilizedPitchReading | null {
+  if (trackingState.trackedFrequencyHz === null) {
+    return null;
+  }
+
+  const noteMatch = getClosestNoteMatch(trackingState.trackedFrequencyHz);
+  return {
+    frequencyHz: trackingState.trackedFrequencyHz,
+    clarity: trackingState.confidence,
+    timestampMs: trackingState.timestampMs,
+    source: "microphone",
+    noteName: noteMatch?.note,
+    octave: noteMatch?.octave,
+    cents: interpretation.centsOffset ?? noteMatch?.cents,
+    stable: trackingState.stage === "locked",
+    sampleCount: trackingState.stage === "locked" ? 3 : 1,
+    target: activeTarget,
+  };
 }
 
 export type DetectorComparisonDebug = {
@@ -111,19 +216,13 @@ export function useTunerPrototype() {
       rmsThreshold: 0.008,
     }),
   );
-  const stabilizerRef = useRef(
-    new SustainedPitchStabilizer({
-      initialRequiredSamples: 3,
-      initialCentsTolerance: 12,
-      initialClarityThreshold: 0.82,
-      sustainedClarityThreshold: 0.65,
-      sustainedCentsTolerance: 18,
-      maxConsecutiveFailures: 4,
-      holdFrames: 8,
-      maxHistory: 8,
-    }),
-  );
+  const trackerRef = useRef(new ContinuousPitchTracker());
+  const interpreterRef = useRef(new TuningInterpreter());
+  const viewModelBuilderRef = useRef(new TunerViewModelBuilder());
   const loopHandleRef = useRef<number | null>(null);
+  const selectionRef = useRef(INITIAL_TUNER_STATE.selection);
+  const previousUiStatusRef = useRef<TunerState["uiStatus"]>(INITIAL_TUNER_STATE.uiStatus);
+
   const [state, setState] = useState<TunerState>(INITIAL_TUNER_STATE);
   const [detectorComparison, setDetectorComparison] = useState<DetectorComparisonDebug>(
     INITIAL_DETECTOR_COMPARISON_DEBUG,
@@ -131,8 +230,10 @@ export function useTunerPrototype() {
   const [availableInputs, setAvailableInputs] = useState<AudioInputDevice[]>([]);
   const [selectedInputDeviceId, setSelectedInputDeviceId] = useState<string | null>(null);
   const [activeInputLabel, setActiveInputLabel] = useState<string | null>(null);
-  const previousUiStatusRef = useRef<TunerState["uiStatus"]>(INITIAL_TUNER_STATE.uiStatus);
-  const selectionRef = useRef(INITIAL_TUNER_STATE.selection);
+  const [rawCandidate, setRawCandidate] = useState<RawPitchCandidate | null>(null);
+  const [trackingState, setTrackingState] = useState<PitchTrackingState | null>(null);
+  const [interpretation, setInterpretation] = useState<TuningInterpretation | null>(null);
+  const [viewModel, setViewModel] = useState<TunerViewModel>(createEmptyViewModel());
 
   function stopProcessingLoop() {
     if (loopHandleRef.current !== null) {
@@ -168,9 +269,7 @@ export function useTunerPrototype() {
 
     return () => {
       stopProcessingLoop();
-      if (manager) {
-        void manager.dispose();
-      }
+      void manager.dispose();
     };
   }, []);
 
@@ -195,54 +294,74 @@ export function useTunerPrototype() {
   function processAudioFrame(session: MicrophoneSession) {
     const detector = detectorRef.current;
     const comparisonDetector = comparisonDetectorRef.current;
-    const stabilizer = stabilizerRef.current;
-    const targetHint = getSelectedTarget(selectionRef.current);
+    const tracker = trackerRef.current;
+    const interpreter = interpreterRef.current;
+    const viewModelBuilder = viewModelBuilderRef.current;
     const frame = session.frameCapture.readFrame(Date.now());
-    const detectedPitch = detector.detect(frame.samples, frame.sampleRate, frame.timestampMs);
-    const comparisonPitch = comparisonDetector.detect(frame.samples, frame.sampleRate, frame.timestampMs);
-    const stabilizedPitch = stabilizer.push(detectedPitch, targetHint);
-    const weakSignalPresent = frame.rms >= WEAK_SIGNAL_RMS || frame.peak >= WEAK_SIGNAL_PEAK;
+
+    const candidate = extractPitchCandidate(
+      detector,
+      frame.samples,
+      frame.sampleRate,
+      frame.timestampMs,
+      "yin",
+    );
+    const comparisonCandidate = extractPitchCandidate(
+      comparisonDetector,
+      frame.samples,
+      frame.sampleRate,
+      frame.timestampMs,
+      "autocorrelation",
+    );
+    const tracked = tracker.update(candidate);
+    const tuningInterpretation = interpreter.interpret(tracked, selectionRef.current);
+    const vm = viewModelBuilder.build(tuningInterpretation);
     const signalPresent = frame.rms >= SIGNAL_PRESENT_RMS || frame.peak >= SIGNAL_PRESENT_PEAK;
+    const detectedPitch = toPitchReading(candidate);
+    const comparisonPitch = toPitchReading(comparisonCandidate);
+
+    setRawCandidate(candidate);
+    setTrackingState(tracked);
+    setInterpretation(tuningInterpretation);
+    setViewModel(vm);
 
     setDetectorComparison({
       frameRms: frame.rms,
       primaryAlgorithm: "yin",
-      primaryFrequencyHz: detectedPitch?.frequencyHz ?? null,
-      primaryClarity: detectedPitch?.clarity ?? null,
+      primaryFrequencyHz: candidate.frequencyHz,
+      primaryClarity: candidate.clarity,
       primaryNoteLabel: toDebugNoteLabel(detectedPitch?.noteName, detectedPitch?.octave),
       secondaryAlgorithm: "autocorrelation",
-      secondaryFrequencyHz: comparisonPitch?.frequencyHz ?? null,
-      secondaryClarity: comparisonPitch?.clarity ?? null,
+      secondaryFrequencyHz: comparisonCandidate.frequencyHz,
+      secondaryClarity: comparisonCandidate.clarity,
       secondaryNoteLabel: toDebugNoteLabel(comparisonPitch?.noteName, comparisonPitch?.octave),
       detectorDeltaHz:
-        detectedPitch && comparisonPitch
-          ? Math.abs(detectedPitch.frequencyHz - comparisonPitch.frequencyHz)
+        candidate.frequencyHz && comparisonCandidate.frequencyHz
+          ? Math.abs(candidate.frequencyHz - comparisonCandidate.frequencyHz)
           : null,
     });
-
-    // 记录时序数据用于调试
-    const uiStatus = !detectedPitch
-      ? signalPresent
-        ? "no-signal"
-        : weakSignalPresent
-          ? "signal-weak"
-          : "listening"
-      : stabilizedPitch?.stable
-        ? "in-tune-or-detecting"
-        : "unstable";
 
     globalDetectionLogger.log({
       timestampMs: frame.timestampMs,
       frameRms: frame.rms,
       framePeak: frame.peak,
-      detectedFrequencyHz: detectedPitch?.frequencyHz ?? null,
-      detectedClarity: detectedPitch?.clarity ?? null,
-      comparisonFrequencyHz: comparisonPitch?.frequencyHz ?? null,
-      stabilizedFrequencyHz: stabilizedPitch?.frequencyHz ?? null,
-      stabilizedStable: stabilizedPitch?.stable ?? null,
-      uiStatus,
-      note: toDebugNoteLabel(detectedPitch?.noteName, detectedPitch?.octave) ?? "null",
+      detectedFrequencyHz: candidate.frequencyHz,
+      detectedClarity: candidate.clarity,
+      comparisonFrequencyHz: comparisonCandidate.frequencyHz,
+      stabilizedFrequencyHz: tracked.trackedFrequencyHz,
+      stabilizedStable: tracked.stage === "locked",
+      uiStatus: vm.uiStage,
+      note: tuningInterpretation.detectedNote ?? vm.displayFrequency,
     });
+
+    globalTimeSeriesLogger.log(
+      candidate,
+      tracked,
+      tuningInterpretation,
+      vm,
+      frame.rms,
+      frame.peak,
+    );
 
     frameLogger.debug("Frame summary", "Sampled microphone frame metrics for live diagnostics.", {
       throttleKey: "frame-summary",
@@ -252,91 +371,86 @@ export function useTunerPrototype() {
         peak: Number(frame.peak.toFixed(5)),
         sampleRate: frame.sampleRate,
         signalPresent,
+        trackingStage: tracked.stage,
+        confidence: Number(tracked.confidence.toFixed(3)),
       },
     });
 
-    if (!detectedPitch && signalPresent) {
-      detectorLogger.warn("Signal without pitch", "Audio energy is present, but no detector produced a valid pitch.", {
-        throttleKey: "signal-without-pitch",
-        throttleMs: 1200,
-        meta: {
-          rms: Number(frame.rms.toFixed(5)),
-          peak: Number(frame.peak.toFixed(5)),
-          yin: "null",
-          autocorrelation: comparisonPitch ? Number(comparisonPitch.frequencyHz.toFixed(2)) : null,
+    if (!candidate.frequencyHz && signalPresent) {
+      detectorLogger.warn(
+        "Signal without pitch",
+        "Audio energy is present, but no detector produced a valid pitch.",
+        {
+          throttleKey: "signal-without-pitch",
+          throttleMs: 1200,
+          meta: {
+            rms: Number(frame.rms.toFixed(5)),
+            peak: Number(frame.peak.toFixed(5)),
+            yin: "null",
+            autocorrelation: comparisonCandidate.frequencyHz
+              ? Number(comparisonCandidate.frequencyHz.toFixed(2))
+              : null,
+          },
         },
-      });
+      );
     }
 
-    if (detectedPitch) {
+    if (candidate.frequencyHz) {
       detectorLogger.success("Primary detector hit", "YIN produced a candidate pitch.", {
         throttleKey: "primary-detector-hit",
         throttleMs: 700,
         meta: {
-          frequencyHz: Number(detectedPitch.frequencyHz.toFixed(2)),
-          clarity: Number(detectedPitch.clarity.toFixed(3)),
-          note: toDebugNoteLabel(detectedPitch.noteName, detectedPitch.octave),
+          frequencyHz: Number(candidate.frequencyHz.toFixed(2)),
+          clarity: Number(candidate.clarity.toFixed(3)),
+          trackingStage: tracked.stage,
         },
       });
     }
 
-    if (detectedPitch && comparisonPitch) {
-      const deltaHz = Math.abs(detectedPitch.frequencyHz - comparisonPitch.frequencyHz);
+    if (candidate.frequencyHz && comparisonCandidate.frequencyHz) {
+      const deltaHz = Math.abs(candidate.frequencyHz - comparisonCandidate.frequencyHz);
       if (deltaHz >= 8) {
-        detectorLogger.warn("Detector disagreement", "YIN and autocorrelation disagree beyond the diagnostic threshold.", {
-          throttleKey: "detector-disagreement",
-          throttleMs: 1200,
-          meta: {
-            yinHz: Number(detectedPitch.frequencyHz.toFixed(2)),
-            autocorrelationHz: Number(comparisonPitch.frequencyHz.toFixed(2)),
-            deltaHz: Number(deltaHz.toFixed(2)),
+        detectorLogger.warn(
+          "Detector disagreement",
+          "YIN and autocorrelation disagree beyond the diagnostic threshold.",
+          {
+            throttleKey: "detector-disagreement",
+            throttleMs: 1200,
+            meta: {
+              yinHz: Number(candidate.frequencyHz.toFixed(2)),
+              autocorrelationHz: Number(comparisonCandidate.frequencyHz.toFixed(2)),
+              deltaHz: Number(deltaHz.toFixed(2)),
+            },
           },
-        });
+        );
       }
     }
 
-    if (stabilizedPitch?.stable) {
-      stabilizerLogger.success("Stable pitch window", "Rolling stabilizer marked the current pitch window as stable.", {
+    if (tracked.stage === "locked") {
+      stabilizerLogger.success("Stable pitch window", "Pitch tracker marked the current window as locked.", {
         throttleKey: "stable-pitch-window",
         throttleMs: 1000,
         meta: {
-          frequencyHz: Number(stabilizedPitch.frequencyHz.toFixed(2)),
-          cents: Number(stabilizedPitch.cents?.toFixed(1) ?? 0),
-          sampleCount: stabilizedPitch.sampleCount,
-          target: stabilizedPitch.target?.id ?? "auto",
+          frequencyHz: Number((tracked.trackedFrequencyHz ?? 0).toFixed(2)),
+          cents: Number((tuningInterpretation.centsOffset ?? 0).toFixed(1)),
+          target: tuningInterpretation.targetId ?? "auto",
+          confidence: Number(tracked.confidence.toFixed(3)),
         },
       });
     }
 
     setState((previousState) => {
-      const activeTarget = resolveActiveTarget(previousState.selection, detectedPitch, stabilizedPitch);
-      const deviation = resolveDeviation(activeTarget, stabilizedPitch, detectedPitch);
-      
-      // 改进的UI状态判断 - 区分"跟踪降级"和"完全丢失"
-      let newUiStatus: TunerState["uiStatus"];
-      
-      if (!stabilizedPitch) {
-        // 完全没有稳定读数
-        newUiStatus = signalPresent ? "no-signal" : weakSignalPresent ? "signal-weak" : "listening";
-      } else {
-        // 有稳定读数（可能是hold状态）
-        if (stabilizedPitch.stable) {
-          // 稳定且准确
-          newUiStatus = deviation?.direction === "in-tune" ? "in-tune" : "detecting";
-        } else {
-          // 不稳定但仍在跟踪（降级状态）
-          if (stabilizedPitch.clarity > 0.5) {
-            newUiStatus = "unstable"; // 跟踪中但不稳定
-          } else {
-            newUiStatus = "detecting"; // 严重降级，接近丢失
-          }
-        }
-      }
+      const activeTarget = getTargetFromInterpretation(tuningInterpretation, previousState.selection);
+      const stabilizedPitch = toTrackedReading(tracked, tuningInterpretation, activeTarget);
+      const deviation =
+        activeTarget && tuningInterpretation.centsOffset !== null
+          ? createDeviationFromCents(tuningInterpretation.centsOffset)
+          : null;
 
       return createTunerStateSnapshot({
         ...previousState,
         audioStatus: "listening",
-        uiStatus: newUiStatus,
+        uiStatus: mapViewModelStageToLegacyUiStatus(vm, candidate, signalPresent),
         activeTarget,
         detectedPitch,
         stabilizedPitch,
@@ -350,8 +464,12 @@ export function useTunerPrototype() {
     stopProcessingLoop();
     detectorRef.current.reset?.();
     comparisonDetectorRef.current.reset?.();
-    stabilizerRef.current.reset();
+    trackerRef.current.reset();
     setDetectorComparison(INITIAL_DETECTOR_COMPARISON_DEBUG);
+    setRawCandidate(null);
+    setTrackingState(null);
+    setInterpretation(null);
+    setViewModel(createEmptyViewModel());
     setActiveInputLabel(session.inputDeviceLabel);
     loopHandleRef.current = window.setInterval(() => {
       processAudioFrame(session);
@@ -419,14 +537,16 @@ export function useTunerPrototype() {
     stopProcessingLoop();
     detectorRef.current.reset?.();
     comparisonDetectorRef.current.reset?.();
-    stabilizerRef.current.reset();
+    trackerRef.current.reset();
 
-    if (manager) {
-      await manager.dispose();
-    }
+    await manager.dispose();
 
     appLogger.info("Session reset", "Tuner session was reset and returned to idle.");
     setDetectorComparison(INITIAL_DETECTOR_COMPARISON_DEBUG);
+    setRawCandidate(null);
+    setTrackingState(null);
+    setInterpretation(null);
+    setViewModel(createEmptyViewModel());
     setActiveInputLabel(null);
     setState(INITIAL_TUNER_STATE);
   }
@@ -444,7 +564,11 @@ export function useTunerPrototype() {
       },
     });
 
-    if (state.audioStatus === "listening" || state.audioStatus === "ready" || state.audioStatus === "suspended") {
+    if (
+      state.audioStatus === "listening" ||
+      state.audioStatus === "ready" ||
+      state.audioStatus === "suspended"
+    ) {
       stopProcessingLoop();
       await manager.dispose();
       setActiveInputLabel(null);
@@ -514,13 +638,27 @@ export function useTunerPrototype() {
     enableAutoTargetMode,
     selectManualTarget,
     isStarting: state.uiStatus === "requesting-permission",
-    // 调试工具
+    rawCandidate,
+    trackingState,
+    interpretation,
+    viewModel,
     debugLogger: {
       start: () => globalDetectionLogger.startRecording(),
       stop: () => globalDetectionLogger.stopRecording(),
       export: () => globalDetectionLogger.exportToConsole(),
       analyze: () => globalDetectionLogger.analyzeDropoutPoint(),
       exportCSV: () => globalDetectionLogger.exportToCSV(),
+    },
+    timeSeriesLogger: {
+      start: () => globalTimeSeriesLogger.startRecording(),
+      stop: () => globalTimeSeriesLogger.stopRecording(),
+      export: () => globalTimeSeriesLogger.exportToConsole(),
+      downloadCSV: () => globalTimeSeriesLogger.downloadCSV(),
+      analyzeTransitions: () => globalTimeSeriesLogger.analyzeStateTransitions(),
+      analyzeMismatches: () => globalTimeSeriesLogger.analyzeMismatchPoints(),
+      analyzeLockDuration: () => globalTimeSeriesLogger.analyzeLockDuration(),
+      generateReport: () => globalTimeSeriesLogger.generateReport(),
+      clear: () => globalTimeSeriesLogger.clear(),
     },
   };
 }

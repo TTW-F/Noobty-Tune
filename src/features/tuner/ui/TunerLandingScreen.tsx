@@ -3,11 +3,24 @@ import { STANDARD_GUITAR_TUNING } from "../../../lib/music";
 import type { AudioInputDevice } from "../../../lib/audio";
 import { DebugReadoutCard, type DebugReadoutData } from "../../../components/DebugReadoutCard";
 import { DeveloperLogConsole } from "../../../components/DeveloperLogConsole";
+import { EnhancedDebugPanel } from "../../../components/EnhancedDebugPanel";
 import { PageShell } from "../../../components/PageShell";
 import { PrimaryButton } from "../../../components/PrimaryButton";
 import { StatusCard } from "../../../components/StatusCard";
 import type { TunerState, TunerUiStatus, TuningStringId } from "../../../types/tuner";
+import type {
+  PitchTrackingState,
+  RawPitchCandidate,
+  TuningInterpretation,
+  TunerViewModel,
+} from "../../../types/pitchTracking";
 import type { DeveloperLogEntry } from "../../../lib/logging/developerLogger";
+import {
+  adaptViewModelToDisplay,
+  shouldShowDegradedWarning,
+  shouldShowSuccessPanel,
+} from "./TunerDisplayAdapter";
+import { createEmptyViewModel } from "../model/tunerViewModel";
 
 type M1Prompt = {
   key: TunerUiStatus | "permission-prompt";
@@ -163,6 +176,10 @@ function getPromptFromState(state: TunerState): M1Prompt {
 
 type TunerLandingScreenProps = {
   state: TunerState;
+  rawCandidate?: RawPitchCandidate | null;
+  trackingState?: PitchTrackingState | null;
+  interpretation?: TuningInterpretation | null;
+  viewModel?: TunerViewModel | null;
   isStarting: boolean;
   onStart: () => void | Promise<void>;
   onReset: () => void | Promise<void>;
@@ -439,6 +456,10 @@ function buildLiveStateContent(state: TunerState, hasActivePitch: boolean): Live
 
 export function TunerLandingScreen({
   state,
+  rawCandidate = null,
+  trackingState = null,
+  interpretation = null,
+  viewModel = null,
   isStarting,
   onStart,
   onReset,
@@ -452,22 +473,21 @@ export function TunerLandingScreen({
   selectedInputDeviceId = null,
   activeInputLabel = null,
 }: TunerLandingScreenProps) {
+  const resolvedViewModel = viewModel ?? createEmptyViewModel();
+  const displayState = adaptViewModelToDisplay(resolvedViewModel, state);
   const currentPrompt = getPromptFromState(state);
   const resolvedDebugReadout = buildDebugReadout(state, debugReadout);
   const heroPanel = buildHeroPanelContent(state, resolvedDebugReadout);
   const liveReading = state.stabilizedPitch ?? state.detectedPitch;
   const hasActivePitch = Boolean(liveReading && typeof liveReading.frequencyHz === "number");
-  const detectedNoteLabel =
-    liveReading?.noteName && typeof liveReading.octave === "number"
-      ? `${liveReading.noteName}${liveReading.octave}`
-      : "--";
+  const detectedNoteLabel = displayState.displayNote;
   const detectedNoteStatus = state.stabilizedPitch
     ? "Stable reading"
     : state.detectedPitch
       ? "Live reading"
       : "Waiting for pitch";
-  const targetNoteLabel = state.activeTarget ? `${state.activeTarget.note}${state.activeTarget.octave}` : "Auto";
-  const targetStatus = state.activeTarget ? `Target string ${state.activeTarget.label}` : "Waiting for target";
+  const targetNoteLabel = displayState.displayTarget ?? "Auto";
+  const targetStatus = displayState.stageLabel;
   const confidenceLabel =
     typeof liveReading?.clarity === "number" ? `${Math.round(liveReading.clarity * 100)}% clarity` : "Clarity --";
   const sampleLabel =
@@ -478,21 +498,16 @@ export function TunerLandingScreen({
     state.audioStatus === "listening" || state.audioStatus === "ready" || state.audioStatus === "suspended";
   const canResetSession =
     state.audioStatus !== "idle" && state.audioStatus !== "requesting-permission";
-  const centsValue = state.deviation?.cents ?? null;
-  const needleOffset = mapCentsToNeedleOffset(centsValue);
+  const centsValue = resolvedViewModel.needlePosition * 50;
+  const needleOffset = displayState.needleActive ? mapCentsToNeedleOffset(centsValue) : 0;
   const inputMeter = getInputMeterState(resolvedDebugReadout.frameRms);
   const rescueCard = buildRescueCardContent(state, resolvedDebugReadout.frameRms, activeInputLabel);
   const showDeviceRecoveryHint = inputMeter.tone !== "active" || availableInputs.length === 0;
-  const directionLabel =
-    state.deviation?.direction === "sharp"
-      ? "Tune down"
-      : state.deviation?.direction === "flat"
-        ? "Tune up"
-        : state.uiStatus === "in-tune"
-          ? "Perfect"
-          : "Listening";
+  const directionLabel = hasActivePitch ? displayState.statusMessage : "No pitch lock";
   const isManualMode = state.selection.mode === "manual";
   const activeManualTarget = STANDARD_GUITAR_TUNING.find((target) => target.id === state.selection.targetId) ?? null;
+  const showSuccessPanel = shouldShowSuccessPanel(resolvedViewModel) && hasActivePitch;
+  const showDegradedWarning = shouldShowDegradedWarning(resolvedViewModel);
   const noteMatchesTarget = hasActivePitch && detectedNoteLabel === targetNoteLabel;
   const closenessPercent =
     typeof centsValue === "number" ? Math.round((1 - clamp(Math.abs(centsValue) / 25, 0, 1)) * 100) : 0;
@@ -500,26 +515,31 @@ export function TunerLandingScreen({
     ? "No stable pitch yet"
     : !noteMatchesTarget
       ? "You are on a different note than the current target"
-      : state.uiStatus === "in-tune"
+      : displayState.showSuccess
         ? "This string is inside the tune window"
-        : state.deviation?.direction === "flat"
+        : centsValue < 0
           ? "Bring the pitch up slowly"
-          : state.deviation?.direction === "sharp"
+          : centsValue > 0
             ? "Back the pitch down slowly"
             : "Keep the note ringing";
   const tuningCoachBody = !hasActivePitch
     ? "Pluck one string by itself and let it sustain long enough for the tuner to lock."
     : !noteMatchesTarget
       ? `Detected ${detectedNoteLabel}, but the target is ${targetNoteLabel}. Re-pluck one isolated string before adjusting.`
-      : state.uiStatus === "in-tune"
+      : displayState.showSuccess
         ? "Hold the note steady. If the needle stays centered, move on to the next string."
-        : `Current offset is ${heroPanel.centsLabel}. Use small adjustments and re-pluck after each change.`;
-  const tuningCoachTone = !hasActivePitch ? "idle" : !noteMatchesTarget ? "warning" : state.uiStatus;
+        : `Current offset is ${displayState.displayCents}. Use small adjustments and re-pluck after each change.`;
+  const tuningCoachTone = !hasActivePitch
+    ? "idle"
+    : !noteMatchesTarget || showDegradedWarning
+      ? "warning"
+      : displayState.showSuccess
+        ? "success"
+        : "active";
   const liveState = buildLiveStateContent(state, hasActivePitch);
   const successHeadline = state.activeTarget
     ? `String ${state.activeTarget.label} is in tune`
     : "Current string is in tune";
-  const showSuccessPanel = state.uiStatus === "in-tune" && hasActivePitch;
   const successTrustLabel =
     inputMeter.tone === "active" && typeof liveReading?.clarity === "number" && liveReading.clarity >= 0.9
       ? "Strong lock"
@@ -667,6 +687,24 @@ export function TunerLandingScreen({
           </div>
 
           <p className="tuner-guidance">{heroPanel.instruction}</p>
+          <div className={`live-state-banner live-state-banner--${displayState.coachTone}`} aria-live="polite">
+            <div className="live-state-copy">
+              <span className="live-state-label">{displayState.coachTitle}</span>
+              <p>{displayState.coachBody}</p>
+            </div>
+            <span className={`live-state-pulse live-state-pulse--${displayState.coachTone}`} aria-hidden="true" />
+          </div>
+          {showDegradedWarning ? (
+            <section className="rescue-card rescue-card--warning" aria-live="polite">
+              <div className="rescue-card-header">
+                <p className="rescue-card-kicker">Tracking state</p>
+                <h3 className="rescue-card-title">Signal is fading, but tracking is still active</h3>
+              </div>
+              <p className="rescue-card-description">
+                The tuner is holding the last stable track instead of dropping the reading immediately.
+              </p>
+            </section>
+          ) : null}
 
           <details
             className={`target-mode-panel ${isManualMode ? "target-mode-panel--manual" : "target-mode-panel--auto"}`}
@@ -922,6 +960,13 @@ export function TunerLandingScreen({
           <summary>Developer tools</summary>
           <div className="developer-tools-stack">
             <DebugReadoutCard data={resolvedDebugReadout} />
+            <EnhancedDebugPanel
+              rawCandidate={rawCandidate}
+              trackingState={trackingState}
+              interpretation={interpretation}
+              viewModel={resolvedViewModel}
+              frameRms={resolvedDebugReadout.frameRms}
+            />
             <DeveloperLogConsole logs={developerLogs} />
           </div>
         </details>

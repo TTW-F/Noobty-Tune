@@ -115,7 +115,12 @@ function printToBrowserConsole(entry: DeveloperLogEntry) {
 }
 
 function relayToDevServer(payload: DevLogPayload) {
-  if (!import.meta.env.DEV || typeof window === "undefined") {
+  const isDev =
+    typeof import.meta !== "undefined" &&
+    typeof import.meta.env !== "undefined" &&
+    Boolean(import.meta.env.DEV);
+
+  if (!isDev || typeof window === "undefined") {
     return;
   }
 

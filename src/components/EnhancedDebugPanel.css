@@ -1,0 +1,487 @@
+/**
+ * EnhancedDebugPanel 样式
+ * 
+ * 设计原则：
+ * - 清晰的层次结构
+ * - 易于扫描的指标布局
+ * - 状态颜色编码
+ */
+
+.enhanced-debug-panel {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 24px;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  color: #e0e0e0;
+  margin: 24px 0;
+}
+
+.debug-panel-header {
+  margin-bottom: 24px;
+  border-bottom: 2px solid #333;
+  padding-bottom: 16px;
+}
+
+.debug-panel-header h3 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.debug-panel-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #888;
+}
+
+/* 网格布局 */
+.debug-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1200px) {
+  .debug-panel-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 调试区块 */
+.debug-section {
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.debug-section--full {
+  grid-column: 1 / -1;
+}
+
+.debug-section-title {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 层级徽章 */
+.debug-layer-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.debug-layer-badge--0 {
+  background: #444;
+  color: #aaa;
+}
+
+.debug-layer-badge--1 {
+  background: #1e3a8a;
+  color: #93c5fd;
+}
+
+.debug-layer-badge--2 {
+  background: #166534;
+  color: #86efac;
+}
+
+.debug-layer-badge--3 {
+  background: #7c2d12;
+  color: #fdba74;
+}
+
+.debug-layer-badge--4 {
+  background: #581c87;
+  color: #e9d5ff;
+}
+
+/* 指标网格 */
+.debug-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.debug-metrics--horizontal {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.debug-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.debug-metric--highlight {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.debug-metric--warning {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.debug-metric-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.debug-metric-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  font-family: 'SF Mono', monospace;
+}
+
+.debug-metric-value--small {
+  font-size: 12px;
+}
+
+.debug-metric-value--success {
+  color: #4ade80;
+}
+
+.debug-metric-value--warning {
+  color: #fbbf24;
+}
+
+.debug-metric-value--error {
+  color: #f87171;
+}
+
+/* 进度条 */
+.debug-metric-bar {
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.debug-metric-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  transition: width 0.2s ease;
+}
+
+/* 状态指示器 */
+.debug-status-bar {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #333;
+}
+
+.debug-status-indicator {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.debug-status-indicator--idle {
+  background: #374151;
+  color: #9ca3af;
+}
+
+.debug-status-indicator--info {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.debug-status-indicator--active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.debug-status-indicator--success {
+  background: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+.debug-status-indicator--warning {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.debug-status-indicator--error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+/* 阶段徽章 */
+.debug-stage-badge {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.debug-stage-badge--idle {
+  background: #374151;
+  color: #9ca3af;
+}
+
+.debug-stage-badge--acquiring {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.debug-stage-badge--tracking {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.debug-stage-badge--locked {
+  background: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+.debug-stage-badge--degraded {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.debug-stage-badge--lost {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+/* 方向徽章 */
+.debug-direction-badge {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.debug-direction-badge--flat {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.debug-direction-badge--in-tune {
+  background: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+.debug-direction-badge--sharp {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.debug-direction-badge--unknown {
+  background: #374151;
+  color: #9ca3af;
+}
+
+/* UI 阶段徽章 */
+.debug-ui-stage-badge {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.debug-ui-stage-badge--idle,
+.debug-ui-stage-badge--lost {
+  background: #374151;
+  color: #9ca3af;
+}
+
+.debug-ui-stage-badge--acquiring {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.debug-ui-stage-badge--tracking {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.debug-ui-stage-badge--locked {
+  background: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+.debug-ui-stage-badge--degraded {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.debug-ui-stage-badge--permission-denied,
+.debug-ui-stage-badge--error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+/* Needle 预览 */
+.debug-needle-preview {
+  margin-top: 8px;
+}
+
+.debug-needle-track {
+  position: relative;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+}
+
+.debug-needle-indicator {
+  position: absolute;
+  top: 0;
+  width: 4px;
+  height: 8px;
+  background: #3b82f6;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  transition: left 0.2s ease;
+}
+
+/* 信号强度计 */
+.debug-signal-meter {
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.debug-signal-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+  transition: width 0.1s ease;
+}
+
+/* 数据流图示 */
+.debug-flow-diagram {
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.debug-flow-chain {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 16px 0;
+}
+
+.debug-flow-node {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #2a2a2a;
+  border: 2px solid #444;
+  border-radius: 8px;
+  min-width: 120px;
+  transition: all 0.3s ease;
+}
+
+.debug-flow-node--active {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: #22c55e;
+}
+
+.debug-flow-node--success {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #4ade80;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.3);
+}
+
+.debug-flow-node-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.debug-flow-node-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.debug-flow-arrow {
+  font-size: 24px;
+  color: #666;
+  flex-shrink: 0;
+}
+
+/* 关键指标摘要 */
+.debug-summary {
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.debug-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 1200px) {
+  .debug-summary-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .debug-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.debug-summary-card {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.debug-summary-label {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.debug-summary-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
