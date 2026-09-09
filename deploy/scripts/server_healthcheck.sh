@@ -15,12 +15,12 @@ echo
 
 if [[ "$ROLE" == "cloud" ]]; then
   echo "[1] Nginx syntax"
-  sudo /usr/sbin/nginx -t
+  sudo /usr/local/nginx/sbin/nginx -t
   echo
 
   echo "[2] Services"
-  systemctl is-active nginx
-  systemctl is-active noobty-tune-frps.service
+  pgrep -x nginx > /dev/null && echo nginx-running || echo nginx-DOWN
+  systemctl is-active frps.service
   echo
 
   echo "[3] Port check (80/443 对外, 3101 仅本机, 7500 frps)"

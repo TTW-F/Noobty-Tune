@@ -1,19 +1,22 @@
 # ============================================================
-# frps 服务端配置 —— 运行于云服务器 106.14.175.93
+# frps 服务端参考模板 —— 与云机 106.14.175.93 实际部署一致
+# 实际位置:/opt/frp-noobty/frps.toml(systemd 单元 frps.service)
 #
-# 职责:接收内网机 192.168.31.35 上 frpc 的隧道注册,
-# 把云机的 127.0.0.1:3101 反向映射到内网机的后端端口,
-# 供本机 nginx (backend.tune.noobty.top) 反向代理使用。
-#
-# 上线前必改:auth.token 换成强随机串(与 frpc.toml 保持一致)
+# 注意:隧道通道是 7000;7500 是管理面板(仅限本机/内网访问,
+# 云机已用 iptables 阻断外网)。
 # ============================================================
 
 bindAddr = "0.0.0.0"
-bindPort = 7500
+bindPort = 7000
+vhostHTTPPort = 8080
 
-auth.token = "CHANGE_ME_TO_A_STRONG_RANDOM_TOKEN"
+auth.method = "token"
+auth.token = "CHANGE_ME_KEEP_IN_SYNC_WITH_FRPC"
 
-# 只允许映射本项目后端端口,防止隧道被滥用
-[[allowPorts]]
-start = 3101
-end = 3101
+log.to = "./frps.log"
+log.level = "info"
+
+webServer.addr = "0.0.0.0"
+webServer.port = 7500
+webServer.user = "admin"
+webServer.password = "CHANGE_ME_WEAK_DEFAULT_IS_DANGEROUS"
