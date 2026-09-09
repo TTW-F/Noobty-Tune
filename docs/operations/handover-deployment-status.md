@@ -127,7 +127,9 @@ translate 项目部署在内网机(应监听 `127.0.0.1:8093`,经 frp `[translat
 1. 云机 nginx 只有 translate 的 **80 端口**配置,**没有 443 vhost、没有证书** → https 请求落入隐式默认站点(其他项目内容),这就是"访问 translate 总是导航到其他项目"的根因;catch-all 兜底上线后则表现为直接断开。
 2. 内网机 translate 应用未运行(8093 无监听) → http 请求得到 404/EOF。
 
-已修复基础设施:签发 Let's Encrypt 证书(translate.noobty.top,自动续期)、补齐 443 vhost(`/usr/local/nginx/conf/conf.d/translate.conf`,原 80 配置备份为 `.bak-20260910`)、frp 路由重建。已用临时监听验证全链路 200。**剩余:translate 应用本身需在内网机 8093 启动**(属该项目的部署步骤)。
+已修复基础设施:签发 Let's Encrypt 证书(translate.noobty.top,自动续期)、补齐 443 vhost(`/usr/local/nginx/conf/conf.d/translate.conf`,原 80 配置备份为 `.bak-20260910`)、frp 路由重建。已用临时监听验证全链路 200。
+
+**应用已启动(同日)**:`https://translate.noobty.top` 现已 200,后端为内网机 `/home/qwe/nllb-service/`(NLLB-200 GPU 翻译服务,8093,`.env` 配置)。⚠️ 注意:当前经 `scripts/start_remote.sh` 以 nohup 方式运行,**重启内网机后需要重新执行该脚本**;建议后续转换为 systemd 单元(注意避免与其脚本内的端口抢占逻辑冲突)。
 
 ---
 
