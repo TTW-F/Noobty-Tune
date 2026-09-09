@@ -120,6 +120,15 @@ ln -sfn <old_release> /srv/noobty-tune/current && /usr/local/nginx/sbin/nginx -s
 - 旧机 `47.100.17.7` 的历史 DNS 记录应清理。
 - 后端目前仍是占位服务;真实后端就绪后替换内网机 `/srv/noobty-tune-backend` 内容即可,隧道与域名不变。
 
+## 10. 2026-09-10 translate.noobty.top 修复记录(同机其他项目)
+
+translate 项目部署在内网机(应监听 `127.0.0.1:8093`,经 frp `[translate-web]` 段 → 云机 vhost 8080 → nginx)。此前故障链:
+
+1. 云机 nginx 只有 translate 的 **80 端口**配置,**没有 443 vhost、没有证书** → https 请求落入隐式默认站点(其他项目内容),这就是"访问 translate 总是导航到其他项目"的根因;catch-all 兜底上线后则表现为直接断开。
+2. 内网机 translate 应用未运行(8093 无监听) → http 请求得到 404/EOF。
+
+已修复基础设施:签发 Let's Encrypt 证书(translate.noobty.top,自动续期)、补齐 443 vhost(`/usr/local/nginx/conf/conf.d/translate.conf`,原 80 配置备份为 `.bak-20260910`)、frp 路由重建。已用临时监听验证全链路 200。**剩余:translate 应用本身需在内网机 8093 启动**(属该项目的部署步骤)。
+
 ---
 
 最后更新:2026-09-10
