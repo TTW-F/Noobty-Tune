@@ -1,0 +1,23 @@
+# ============================================================
+# frpc 客户端守护 —— 运行于内网后端机 192.168.31.35
+# 部署位置:/etc/systemd/system/noobty-tune-frpc.service
+# 前提:frp 程序位于 /usr/local/bin/frpc,配置位于
+#       /etc/noobty-tune/frpc.toml(参考 deploy/frp/frpc.toml)
+# ============================================================
+
+[Unit]
+Description=Noobty Tune FRP Client (LAN origin)
+After=network-online.target noobty-tune-backend.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nobody
+Group=nogroup
+ExecStart=/usr/local/bin/frpc -c /etc/noobty-tune/frpc.toml
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
