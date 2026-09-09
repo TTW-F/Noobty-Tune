@@ -16,6 +16,11 @@
     "docs:sync": "tsx .claude/skills/doc-updater/scripts/sync.ts"
   },
   "dependencies": {
+    "@fontsource-variable/instrument-sans": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/instrument-serif": "^5.3.0",
+    "@fontsource/noto-sans-sc": "^5.3.0",
+    "motion": "^13.2.0",
     "pitchfinder": "^2.3.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
@@ -30,9 +35,9 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "tsx": "^4.20.6",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.0",
-    "vite": "^8.0.4",
-    "tsx": "^4.20.6"
+    "vite": "^8.0.4"
   }
 }

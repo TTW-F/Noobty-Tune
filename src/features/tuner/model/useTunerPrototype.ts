@@ -28,6 +28,7 @@ import type {
 import type {
   PitchTrackingState,
   RawPitchCandidate,
+  TrackingStage,
   TuningInterpretation,
   TunerViewModel,
 } from "../../../types/pitchTracking";
@@ -196,12 +197,42 @@ const INITIAL_DETECTOR_COMPARISON_DEBUG: DetectorComparisonDebug = {
   detectorDeltaHz: null,
 };
 
+/**
+ * 每帧原始采样的可变快照,供 60fps 画布(振动弦等)直接读取,
+ * 不经过 React 状态,避免 13Hz 的帧循环拖慢动画。
+ */
+export type LiveAudioSample = {
+  readonly timestampMs: number;
+  readonly rms: number;
+  readonly peak: number;
+  readonly frequencyHz: number | null;
+  readonly trackedFrequencyHz: number | null;
+  readonly confidence: number;
+  readonly stage: TrackingStage;
+  readonly centsOffset: number | null;
+};
+
+export const EMPTY_LIVE_SAMPLE: LiveAudioSample = {
+  timestampMs: 0,
+  rms: 0,
+  peak: 0,
+  frequencyHz: null,
+  trackedFrequencyHz: null,
+  confidence: 0,
+  stage: "idle",
+  centsOffset: null,
+};
+
 export function useTunerPrototype() {
   const managerRef = useRef(new BrowserMicrophoneManager());
   const detectorRef = useRef(
     new YinPitchDetector({
       algorithm: "yin",
+      // Search sensitivity only: the detector reports marginal frames with
+      // their honest clarity instead of dropping them, and the tracker's
+      // lock/hold thresholds decide how each clarity band is used.
       probabilityThreshold: 0.82,
+      clarityFloor: 0.35,
       minFrequencyHz: 70,
       maxFrequencyHz: 360,
       rmsThreshold: 0.008,
@@ -211,6 +242,7 @@ export function useTunerPrototype() {
     new AutoCorrelationPitchDetector({
       algorithm: "autocorrelation",
       probabilityThreshold: 0.76,
+      clarityFloor: 0.35,
       minFrequencyHz: 70,
       maxFrequencyHz: 360,
       rmsThreshold: 0.008,
@@ -234,6 +266,7 @@ export function useTunerPrototype() {
   const [trackingState, setTrackingState] = useState<PitchTrackingState | null>(null);
   const [interpretation, setInterpretation] = useState<TuningInterpretation | null>(null);
   const [viewModel, setViewModel] = useState<TunerViewModel>(createEmptyViewModel());
+  const liveRef = useRef<LiveAudioSample>(EMPTY_LIVE_SAMPLE);
 
   function stopProcessingLoop() {
     if (loopHandleRef.current !== null) {
@@ -319,6 +352,17 @@ export function useTunerPrototype() {
     const signalPresent = frame.rms >= SIGNAL_PRESENT_RMS || frame.peak >= SIGNAL_PRESENT_PEAK;
     const detectedPitch = toPitchReading(candidate);
     const comparisonPitch = toPitchReading(comparisonCandidate);
+
+    liveRef.current = {
+      timestampMs: frame.timestampMs,
+      rms: frame.rms,
+      peak: frame.peak,
+      frequencyHz: candidate.frequencyHz,
+      trackedFrequencyHz: tracked.trackedFrequencyHz,
+      confidence: tracked.confidence,
+      stage: tracked.stage,
+      centsOffset: tuningInterpretation.centsOffset,
+    };
 
     setRawCandidate(candidate);
     setTrackingState(tracked);
@@ -465,6 +509,9 @@ export function useTunerPrototype() {
     detectorRef.current.reset?.();
     comparisonDetectorRef.current.reset?.();
     trackerRef.current.reset();
+    interpreterRef.current.reset();
+    viewModelBuilderRef.current.reset();
+    liveRef.current = EMPTY_LIVE_SAMPLE;
     setDetectorComparison(INITIAL_DETECTOR_COMPARISON_DEBUG);
     setRawCandidate(null);
     setTrackingState(null);
@@ -473,7 +520,7 @@ export function useTunerPrototype() {
     setActiveInputLabel(session.inputDeviceLabel);
     loopHandleRef.current = window.setInterval(() => {
       processAudioFrame(session);
-    }, 75);
+    }, 50);
   }
 
   async function startWithCurrentInput() {
@@ -538,6 +585,9 @@ export function useTunerPrototype() {
     detectorRef.current.reset?.();
     comparisonDetectorRef.current.reset?.();
     trackerRef.current.reset();
+    interpreterRef.current.reset();
+    viewModelBuilderRef.current.reset();
+    liveRef.current = EMPTY_LIVE_SAMPLE;
 
     await manager.dispose();
 
@@ -631,6 +681,7 @@ export function useTunerPrototype() {
     availableInputs,
     selectedInputDeviceId,
     activeInputLabel,
+    liveRef,
     startTuning,
     resetSession,
     refreshInputDevices,

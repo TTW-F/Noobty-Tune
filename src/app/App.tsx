@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useDeveloperLogs } from "../lib/logging/developerLogger";
 import { useTunerPrototype } from "../features/tuner/model";
-import { TunerLandingScreen } from "../features/tuner/ui/TunerLandingScreen";
+import { TunerScreen } from "../features/tuner/ui/TunerScreen";
 
 export function App() {
   const logs = useDeveloperLogs();
@@ -15,6 +15,7 @@ export function App() {
     availableInputs,
     selectedInputDeviceId,
     activeInputLabel,
+    liveRef,
     startTuning,
     resetSession,
     refreshInputDevices,
@@ -23,15 +24,19 @@ export function App() {
     selectManualTarget,
     isStarting,
     debugLogger,
+    timeSeriesLogger,
   } = useTunerPrototype();
-  
+
   // 暴露调试工具到全局（仅开发环境）
   useEffect(() => {
     if (typeof window !== "undefined" && import.meta.env.DEV) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).tunerDebug = debugLogger;
+      (window as any).tunerDebug = {
+        detection: debugLogger,
+        timeline: timeSeriesLogger,
+      };
     }
-  }, [debugLogger]);
+  }, [debugLogger, timeSeriesLogger]);
 
   const reading = trackingState?.trackedFrequencyHz
     ? state.stabilizedPitch
@@ -64,13 +69,14 @@ export function App() {
   };
 
   return (
-    <TunerLandingScreen
+    <TunerScreen
       state={state}
       rawCandidate={rawCandidate}
       trackingState={trackingState}
       interpretation={interpretation}
       viewModel={viewModel}
       isStarting={isStarting}
+      liveRef={liveRef}
       onStart={startTuning}
       onReset={resetSession}
       debugReadout={debugReadout}

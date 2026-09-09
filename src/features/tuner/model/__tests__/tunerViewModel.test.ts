@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { TunerViewModelBuilder } from "../tunerViewModel";
-import { shouldShowSuccessPanel } from "../../ui/TunerDisplayAdapter";
 import type { TuningInterpretation } from "../../../../types/pitchTracking";
 
 const builder = new TunerViewModelBuilder();
@@ -66,8 +65,52 @@ describe("TunerViewModelBuilder", () => {
     );
 
     assert.equal(success.showSuccess, true);
-    assert.equal(shouldShowSuccessPanel(success), true);
     assert.equal(tooEarly.showSuccess, false);
+  });
+
+  it("latches success so boundary readings cannot flap the banner", () => {
+    const latching = new TunerViewModelBuilder();
+
+    const enter = latching.build(
+      createInterpretation("locked", 82.41, {
+        targetId: "string-6",
+        centsOffset: 4,
+        direction: "in-tune",
+        confidence: 0.9,
+      }),
+    );
+    assert.equal(enter.showSuccess, true);
+
+    // Drifts to +7 cents: outside the entry gate, inside the release gate.
+    const hold = latching.build(
+      createInterpretation("locked", 82.46, {
+        targetId: "string-6",
+        centsOffset: 7,
+        direction: "sharp",
+        confidence: 0.9,
+      }),
+    );
+    assert.equal(hold.showSuccess, true);
+
+    const exit = latching.build(
+      createInterpretation("locked", 82.75, {
+        targetId: "string-6",
+        centsOffset: 35,
+        direction: "sharp",
+        confidence: 0.9,
+      }),
+    );
+    assert.equal(exit.showSuccess, false);
+
+    const reenter = latching.build(
+      createInterpretation("locked", 82.41, {
+        targetId: "string-6",
+        centsOffset: 0,
+        direction: "in-tune",
+        confidence: 0.9,
+      }),
+    );
+    assert.equal(reenter.showSuccess, true);
   });
 });
 
