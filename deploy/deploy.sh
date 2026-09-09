@@ -21,6 +21,8 @@ RELEASES_DIR="$DEPLOY_PATH/releases"
 CURRENT_LINK="$DEPLOY_PATH/current"
 SHARED_DIR="$DEPLOY_PATH/shared"
 TARGET_RELEASE_DIR="$RELEASES_DIR/$RELEASE_NAME"
+# 云机(106.14.175.93)运行的是自编译 nginx;发行版 nginx 在该机为死配置
+NGINX_BIN="${NGINX_BIN:-/usr/local/nginx/sbin/nginx}"
 
 echo "Deploy path: $DEPLOY_PATH"
 echo "Release name: $RELEASE_NAME"
@@ -42,14 +44,14 @@ if [[ ! -f "$TARGET_RELEASE_DIR/index.html" ]]; then
   exit 1
 fi
 
-if ! sudo /usr/sbin/nginx -t; then
+if ! sudo "$NGINX_BIN" -t; then
   echo "Nginx config test failed. Keep current release unchanged."
   rm -rf "$TARGET_RELEASE_DIR"
   exit 1
 fi
 
 ln -sfn "$TARGET_RELEASE_DIR" "$CURRENT_LINK"
-sudo /usr/sbin/nginx -s reload
+sudo "$NGINX_BIN" -s reload
 
 echo "Pruning old releases, keep: $KEEP_RELEASES"
 mapfile -t RELEASE_CANDIDATES < <(ls -1dt "$RELEASES_DIR"/* 2>/dev/null || true)
