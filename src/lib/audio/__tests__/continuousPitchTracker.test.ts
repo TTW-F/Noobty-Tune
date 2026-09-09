@@ -87,6 +87,60 @@ describe("ContinuousPitchTracker", () => {
     assert.ok((state.trackedFrequencyHz ?? 0) > 82.3);
   });
 
+  it("does not start acquiring on a marginal candidate", () => {
+    const state = tracker.update(createCandidate(82.41, 0.4, nextTimestamp()));
+
+    assert.equal(state.stage, "idle");
+  });
+
+  it("bridges brief dropouts while acquiring instead of resetting", () => {
+    tracker.update(createCandidate(82.41, 0.9, nextTimestamp()));
+    const firstMiss = tracker.update(createNullCandidate(nextTimestamp()));
+    const secondMiss = tracker.update(createNullCandidate(nextTimestamp()));
+
+    assert.equal(firstMiss.stage, "acquiring");
+    assert.equal(secondMiss.stage, "acquiring");
+
+    const thirdMiss = tracker.update(createNullCandidate(nextTimestamp()));
+    assert.equal(thirdMiss.stage, "idle");
+  });
+
+  it("still locks after a bridged dropout once continuity returns", () => {
+    tracker.update(createCandidate(82.41, 0.86, nextTimestamp()));
+    tracker.update(createNullCandidate(nextTimestamp()));
+    tracker.update(createCandidate(82.40, 0.87, nextTimestamp()));
+    tracker.update(createCandidate(82.42, 0.88, nextTimestamp()));
+    const state = tracker.update(createCandidate(82.41, 0.9, nextTimestamp()));
+
+    assert.equal(state.stage, "locked");
+  });
+
+  it("does not let an octave-glitch candidate contaminate the lock or the window", () => {
+    lockTracker();
+
+    // Sustained-decay CMND valleys at tau0 and 2*tau0 make the detector
+    // occasionally report an octave-high candidate with high clarity.
+    tracker.update(createCandidate(164.82, 0.9, nextTimestamp()));
+    const state = tracker.update(createCandidate(82.41, 0.9, nextTimestamp()));
+
+    assert.equal(state.stage, "locked");
+    assert.ok(Math.abs((state.trackedFrequencyHz ?? 0) - 82.41) < 0.05);
+  });
+
+  it("does not flip tracking to degraded on a single weak frame", () => {
+    tracker.update(createCandidate(82.41, 0.86, nextTimestamp()));
+    tracker.update(createCandidate(82.40, 0.74, nextTimestamp()));
+    tracker.update(createCandidate(82.42, 0.76, nextTimestamp()));
+
+    const dipped = tracker.update(createCandidate(82.42, 0.45, nextTimestamp()));
+    assert.equal(dipped.stage, "tracking");
+    assert.equal(dipped.mismatchCount, 1);
+
+    const recovered = tracker.update(createCandidate(82.42, 0.9, nextTimestamp()));
+    assert.equal(recovered.stage, "tracking");
+    assert.equal(recovered.mismatchCount, 0);
+  });
+
   function lockTracker() {
     tracker.update(createCandidate(82.41, 0.86, nextTimestamp()));
     tracker.update(createCandidate(82.40, 0.87, nextTimestamp()));

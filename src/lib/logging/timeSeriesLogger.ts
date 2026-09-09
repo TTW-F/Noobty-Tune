@@ -35,6 +35,7 @@ export interface TimeSeriesEntry {
   // Layer 3: Interpretation
   readonly detectedNote: string | null;
   readonly targetId: string | null;
+  readonly targetFrequencyHz: number | null;
   readonly centsOffset: number | null;
   readonly direction: string | null;
   
@@ -108,6 +109,7 @@ export class TimeSeriesLogger {
       // Layer 3
       detectedNote: interpretation?.detectedNote ?? null,
       targetId: interpretation?.targetId ?? null,
+      targetFrequencyHz: interpretation?.targetFrequencyHz ?? null,
       centsOffset: interpretation?.centsOffset ?? null,
       direction: interpretation?.direction ?? null,
       
@@ -161,6 +163,7 @@ export class TimeSeriesLogger {
       "holdRemainingMs",
       "detectedNote",
       "targetId",
+      "targetFrequencyHz",
       "centsOffset",
       "direction",
       "uiStage",
@@ -185,6 +188,7 @@ export class TimeSeriesLogger {
       entry.holdRemainingMs,
       entry.detectedNote,
       entry.targetId,
+      entry.targetFrequencyHz,
       entry.centsOffset,
       entry.direction,
       entry.uiStage,

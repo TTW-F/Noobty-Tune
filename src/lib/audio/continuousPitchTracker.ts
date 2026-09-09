@@ -65,6 +65,12 @@ export class ContinuousPitchTracker {
       return this.state;
     }
 
+    // The detector reports marginal candidates with honest clarity; only
+    // candidates that clear the hold floor may start an acquisition attempt.
+    if (candidate.clarity < this.config.holdClarityThreshold) {
+      return this.state;
+    }
+
     return this.transitionTo("acquiring", {
       trackedFrequencyHz: candidate.frequencyHz,
       confidence: candidate.clarity,
@@ -78,11 +84,15 @@ export class ContinuousPitchTracker {
 
   private handleAcquiring(candidate: RawPitchCandidate): PitchTrackingState {
     if (candidate.frequencyHz === null) {
-      return this.transitionTo("idle", this.createIdleState(candidate.timestampMs));
+      return this.tolerateMissDuringAcquiring(candidate.timestampMs);
     }
 
-    const recentCandidates = this.getRecentContiguousCandidates(this.config.lockRequiredFrames);
-    const avgFreq = this.average(recentCandidates.map((item) => item.frequencyHz ?? 0));
+    const referenceFrequency = this.state.trackedFrequencyHz ?? candidate.frequencyHz;
+    const recentCandidates = this.getRecentContiguousCandidates(
+      this.config.lockRequiredFrames,
+      referenceFrequency,
+    );
+    const avgFreq = this.averageFrequency(recentCandidates.map((item) => item.frequencyHz ?? 0));
     const avgClarity = this.average(recentCandidates.map((item) => item.clarity));
 
     if (recentCandidates.length < this.config.lockRequiredFrames) {
@@ -90,6 +100,7 @@ export class ContinuousPitchTracker {
         ...this.state,
         trackedFrequencyHz: candidate.frequencyHz,
         confidence: candidate.clarity,
+        mismatchCount: 0,
         timestampMs: candidate.timestampMs,
       };
     }
@@ -145,8 +156,11 @@ export class ContinuousPitchTracker {
       return this.degradeOrHold(candidate.timestampMs, "clarity-drop");
     }
 
-    const recentCandidates = this.getRecentContiguousCandidates(this.config.lockRequiredFrames);
-    const avgFreq = this.average(recentCandidates.map((item) => item.frequencyHz ?? 0));
+    const recentCandidates = this.getRecentContiguousCandidates(
+      this.config.lockRequiredFrames,
+      referenceFrequency,
+    );
+    const avgFreq = this.averageFrequency(recentCandidates.map((item) => item.frequencyHz ?? 0));
     const avgClarity = this.average(recentCandidates.map((item) => item.clarity));
 
     if (
@@ -200,9 +214,19 @@ export class ContinuousPitchTracker {
       Math.abs(centsDelta) <= this.config.maxFrequencyJumpCents &&
       candidate.clarity >= this.config.holdClarityThreshold
     ) {
+      // Recover onto the recent window average instead of the raw candidate so
+      // the tracked frequency stays smooth across the degraded episode.
+      const recentCandidates = this.getRecentContiguousCandidates(
+        this.config.lockRequiredFrames,
+        this.state.trackedFrequencyHz ?? candidate.frequencyHz,
+      );
+      const recoveredFrequencyHz = recentCandidates.length > 0
+        ? this.averageFrequency(recentCandidates.map((item) => item.frequencyHz ?? 0))
+        : candidate.frequencyHz;
+
       return this.transitionTo("tracking", {
         ...this.state,
-        trackedFrequencyHz: candidate.frequencyHz,
+        trackedFrequencyHz: recoveredFrequencyHz,
         confidence: candidate.clarity,
         mismatchCount: 0,
         holdRemainingMs: this.config.holdDurationMs,
@@ -215,6 +239,10 @@ export class ContinuousPitchTracker {
 
   private handleLost(candidate: RawPitchCandidate): PitchTrackingState {
     if (candidate.frequencyHz === null) {
+      return this.state;
+    }
+
+    if (candidate.clarity < this.config.holdClarityThreshold) {
       return this.state;
     }
 
@@ -245,8 +273,11 @@ export class ContinuousPitchTracker {
       return this.degradeOrHold(candidate.timestampMs, "clarity-drop");
     }
 
-    const recentCandidates = this.getRecentContiguousCandidates(5);
-    const avgFreq = this.average(recentCandidates.map((item) => item.frequencyHz ?? 0));
+    const recentCandidates = this.getRecentContiguousCandidates(
+      5,
+      this.state.trackedFrequencyHz ?? candidate.frequencyHz,
+    );
+    const avgFreq = this.averageFrequency(recentCandidates.map((item) => item.frequencyHz ?? 0));
     const avgClarity = this.average(recentCandidates.map((item) => item.clarity));
 
     return {
@@ -260,6 +291,23 @@ export class ContinuousPitchTracker {
     };
   }
 
+  private tolerateMissDuringAcquiring(timestampMs: number): PitchTrackingState {
+    const misses = this.state.mismatchCount + 1;
+
+    if (misses <= this.config.acquiringGraceMisses) {
+      // Brief dropouts are common during the pluck attack; keep the partial
+      // window instead of discarding the whole acquisition attempt.
+      return {
+        ...this.state,
+        mismatchCount: misses,
+        holdRemainingMs: 0,
+        timestampMs,
+      };
+    }
+
+    return this.transitionTo("idle", this.createIdleState(timestampMs));
+  }
+
   private degradeOrHold(
     timestampMs: number,
     reason: "no-candidate" | "frequency-jump" | "clarity-drop",
@@ -269,11 +317,17 @@ export class ContinuousPitchTracker {
       this.state.holdRemainingMs - this.getFrameDurationMs(timestampMs),
       0,
     );
+    // A single rejected frame must not flip the stage: tracking degrades only
+    // after a couple of consecutive misses, locked releases on hold exhaustion
+    // or its accumulated mismatch budget. Otherwise a marginal sustain makes
+    // the stage flicker tracking <-> degraded every other frame.
+    const mismatchLimit = this.state.stage === "tracking"
+      ? this.config.trackingToleranceMisses
+      : Math.ceil(this.config.releaseAfterMisses / 2);
 
     if (
-      this.state.stage === "tracking" ||
       nextHoldRemainingMs <= 0 ||
-      newMismatchCount >= Math.ceil(this.config.releaseAfterMisses / 2)
+      newMismatchCount >= mismatchLimit
     ) {
       return this.transitionTo("degraded", {
         ...this.state,
@@ -358,12 +412,26 @@ export class ContinuousPitchTracker {
     };
   }
 
-  private getRecentContiguousCandidates(count: number): RawPitchCandidate[] {
+  private getRecentContiguousCandidates(
+    count: number,
+    referenceFrequencyHz: number | null = null,
+  ): RawPitchCandidate[] {
     const recent: RawPitchCandidate[] = [];
 
     for (let index = this.history.length - 1; index >= 0 && recent.length < count; index -= 1) {
       const candidate = this.history[index];
       if (candidate.frequencyHz === null) {
+        break;
+      }
+
+      // Jump-gated candidates still enter history; they must not re-enter the
+      // smoothing window, or a single octave glitch drags the window mean far
+      // enough to reject every following frame and cascade into a lost lock.
+      if (
+        referenceFrequencyHz !== null &&
+        Math.abs(this.getCentsOffset(candidate.frequencyHz, referenceFrequencyHz)) >
+          this.config.maxFrequencyJumpCents
+      ) {
         break;
       }
 
@@ -401,10 +469,28 @@ export class ContinuousPitchTracker {
     return values.reduce((sum, value) => sum + value, 0) / values.length;
   }
 
+  /**
+   * Pitch lives in the log domain: cents are ratios, not differences. Averaging
+   * frequencies arithmetically biases the tracked pitch sharp inside the
+   * allowed lock window, so the window mean is taken geometrically instead.
+   */
+  private averageFrequency(values: number[]): number {
+    if (values.length === 0) {
+      return 0;
+    }
+
+    let logSum = 0;
+    for (const value of values) {
+      logSum += Math.log(value > 0 ? value : Number.EPSILON);
+    }
+
+    return Math.exp(logSum / values.length);
+  }
+
   private getFrameDurationMs(timestampMs: number): number {
     const delta = timestampMs - this.state.timestampMs;
     if (!Number.isFinite(delta) || delta <= 0 || delta > 250) {
-      return 75;
+      return 50;
     }
 
     return delta;

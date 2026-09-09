@@ -13,7 +13,21 @@ const STRING_LABELS: Record<string, string> = {
   "string-1": "String 1 (E4)",
 };
 
+/**
+ * Success uses a Schmitt trigger: it enters at the strict in-tune gate but
+ * only releases once the reading has decisively left the target. A sustain
+ * hovering right at the entry boundary otherwise toggles the success banner
+ * on every frame.
+ */
+const SUCCESS_RELEASE_CENTS = 8;
+
 export class TunerViewModelBuilder {
+  private successLatched = false;
+
+  reset(): void {
+    this.successLatched = false;
+  }
+
   build(interpretation: TuningInterpretation): TunerViewModel {
     const uiStage = this.mapTrackingStageToUiStage(interpretation.trackingStage);
 
@@ -100,11 +114,29 @@ export class TunerViewModelBuilder {
   }
 
   private shouldShowSuccess(interpretation: TuningInterpretation): boolean {
-    return (
+    const centsMagnitude = interpretation.centsOffset !== null
+      ? Math.abs(interpretation.centsOffset)
+      : Number.POSITIVE_INFINITY;
+
+    if (this.successLatched) {
+      if (interpretation.trackingStage === "locked" && centsMagnitude <= SUCCESS_RELEASE_CENTS) {
+        return true;
+      }
+
+      this.successLatched = false;
+      return false;
+    }
+
+    const enter =
       interpretation.trackingStage === "locked" &&
       interpretation.direction === "in-tune" &&
-      interpretation.confidence >= 0.85
-    );
+      interpretation.confidence >= 0.85;
+
+    if (enter) {
+      this.successLatched = true;
+    }
+
+    return enter;
   }
 
   private getStatusMessage(interpretation: TuningInterpretation): string {

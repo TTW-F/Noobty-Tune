@@ -49,6 +49,15 @@
   - 提高（如 800）：更长的延音保持
   - 降低（如 400）：更快响应信号丢失
 
+#### `trackingToleranceMisses`
+- **默认值**: `2`
+- **含义**: `tracking` 阶段连续多少次失配才降级到 `degraded`。
+  没有缓冲时，clarity 在保持门限附近徘徊的延音会让状态每帧翻转（最高 10 次/秒），
+  UI 文案随之闪烁。
+- **调整建议**:
+  - 提高（如 3）：更强的抗单帧抖动，但对真实信号变化的响应变慢
+  - 降低（如 1）：更快反映信号恶化，但状态翻转风险回升
+
 ### 释放条件（Release Condition）
 
 #### `releaseAfterMisses`
@@ -57,6 +66,16 @@
 - **调整建议**:
   - 提高（如 12）：更长的容错时间
   - 降低（如 6）：更快释放
+
+### 捕获阶段参数（Acquiring Phase）
+
+#### `acquiringGraceMisses`
+- **默认值**: `2`
+- **含义**: `acquiring` 阶段容忍的连续空帧数。拨弦瞬态和麦克风间歇弱帧经常产生空帧，
+  超过容忍次数才回到 `idle`，避免采集过程被反复打断。
+- **调整建议**:
+  - 提高（如 3）：更宽容的采集过程，但可能粘在无效信号上
+  - 降低（如 1）：更快回到 idle，但锁定延迟增加
 
 ### 其他参数
 
@@ -71,7 +90,7 @@
 
 ```
 idle
-  ↓ (检测到候选)
+  ↓ (检测到候选，且 clarity >= holdClarityThreshold)
 acquiring
   ↓ (连续 lockRequiredFrames 帧，clarity >= lockClarityThreshold)
 locked
@@ -79,9 +98,17 @@ locked
 degraded
   ↓ (连续 releaseAfterMisses 次失配)
 lost
-  ↓ (检测到新候选)
+  ↓ (检测到候选，且 clarity >= holdClarityThreshold)
 acquiring
 ```
+
+注意：检测器自 2026-09 起对 clarity 介于 `holdClarityThreshold` 与锁定阈值之间的边缘帧
+**如实上报**（不再直接丢弃）。`idle`/`lost` 进入 `acquiring` 时会以 `holdClarityThreshold`
+做准入门，低于该值的候选视为噪声，不启动采集。
+
+平滑窗口的一致性规则：被跳变门拒绝的候选（如八度跳错）虽然会进入历史，但
+**不会进入平滑均值窗口**——窗口从尾部向前取帧，遇到与参考频率偏差超过
+`maxFrequencyJumpCents` 的帧即停止，避免单个八度毛刺把均值拖偏并级联掉锁。
 
 ## 调参建议
 

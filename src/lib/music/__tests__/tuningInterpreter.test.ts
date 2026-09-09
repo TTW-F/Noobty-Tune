@@ -53,6 +53,38 @@ describe("TuningInterpreter", () => {
     assert.equal(interpretation.detectedFrequencyHz, null);
     assert.equal(interpretation.targetId, null);
   });
+
+  it("sticks with the previous target near the midpoint between two strings", () => {
+    const sticky = new TuningInterpreter();
+    const locked = sticky.interpret(createTrackingState("locked", 82.41), autoSelection);
+    assert.equal(locked.targetId, "string-6");
+
+    // 95.3 Hz is ~250 cents from both E2 and A2; A2 is marginally closer but
+    // well inside the switch margin, so the previous target must be kept.
+    const interpretation = sticky.interpret(createTrackingState("locked", 95.3), autoSelection);
+
+    assert.equal(interpretation.targetId, "string-6");
+  });
+
+  it("switches to a new target when it is decisively closer", () => {
+    const sticky = new TuningInterpreter();
+    sticky.interpret(createTrackingState("locked", 82.41), autoSelection);
+
+    const interpretation = sticky.interpret(createTrackingState("locked", 98), autoSelection);
+
+    assert.equal(interpretation.targetId, "string-5");
+  });
+
+  it("returns to the closest target after reset", () => {
+    const sticky = new TuningInterpreter();
+    sticky.interpret(createTrackingState("locked", 82.41), autoSelection);
+    sticky.reset();
+
+    // Without prior state the closest string wins again (A2 for 95.3 Hz).
+    const interpretation = sticky.interpret(createTrackingState("locked", 95.3), autoSelection);
+
+    assert.equal(interpretation.targetId, "string-5");
+  });
 });
 
 function createTrackingState(
