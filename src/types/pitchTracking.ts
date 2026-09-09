@@ -128,10 +128,16 @@ export interface PitchTrackerConfig {
   // 保持阶段参数
   readonly holdClarityThreshold: number;         // 保持所需的最低清晰度（更宽松）
   readonly holdDurationMs: number;               // 短时失配保持时间
+
+  // tracking 阶段失配缓冲：连续多少次失配才降级（防止单帧抖动反复翻转状态）
+  readonly trackingToleranceMisses: number;
   
   // 释放条件
   readonly releaseAfterMisses: number;           // 连续失配多少次后释放
-  
+
+  // acquiring 阶段容忍的短暂信号中断帧数（拨弦瞬态常见间歇弱帧）
+  readonly acquiringGraceMisses: number;
+
   // 其他
   readonly maxHistoryFrames: number;             // 最大历史帧数
 }
@@ -140,12 +146,16 @@ export const DEFAULT_TRACKER_CONFIG: PitchTrackerConfig = {
   lockClarityThreshold: 0.82,
   lockRequiredFrames: 3,
   maxFrequencyJumpCents: 50,
-  
+
   holdClarityThreshold: 0.50,
   holdDurationMs: 600,
-  
+
+  trackingToleranceMisses: 2,
+
   releaseAfterMisses: 8,
-  
+
+  acquiringGraceMisses: 2,
+
   maxHistoryFrames: 12,
 };
 import type { TuningStringId } from "./tuner";

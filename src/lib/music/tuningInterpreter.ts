@@ -3,7 +3,21 @@ import type { TunerSelection, TuningStringId, TuningTarget } from "../../types/t
 import { findClosestTuningTarget, getCentsOffset, getClosestNoteMatch } from "./noteMapping";
 import { getStandardTuningTarget } from "./standardTuning";
 
+/**
+ * Auto mode keeps the previously assigned target until another string is
+ * closer by at least this margin. Without it, a tracked pitch sitting near the
+ * midpoint between two open strings flips targets from frame to frame and the
+ * tuning needle jumps between them.
+ */
+const TARGET_SWITCH_MARGIN_CENTS = 15;
+
 export class TuningInterpreter {
+  private lastAutoTargetId: TuningStringId | null = null;
+
+  reset(): void {
+    this.lastAutoTargetId = null;
+  }
+
   interpret(
     trackingState: PitchTrackingState,
     selection: TunerSelection,
@@ -13,6 +27,7 @@ export class TuningInterpreter {
       trackingState.stage === "lost" ||
       trackingState.trackedFrequencyHz === null
     ) {
+      this.lastAutoTargetId = null;
       return this.createEmptyInterpretation(trackingState);
     }
 
@@ -43,7 +58,7 @@ export class TuningInterpreter {
       };
     }
 
-    const target = findClosestTuningTarget(trackedFrequencyHz);
+    const target = this.resolveAutoTarget(trackedFrequencyHz);
     if (!target) {
       return {
         detectedFrequencyHz: trackedFrequencyHz,
@@ -58,6 +73,47 @@ export class TuningInterpreter {
     }
 
     return this.createInterpretationWithTarget(trackingState, target);
+  }
+
+  /**
+   * Hysteresis: stick with the previous target unless the new closest string
+   * is decisively closer, so the needle cannot oscillate between neighbours
+   * when the tracked pitch sits near the midpoint between two open strings.
+   */
+  private resolveAutoTarget(frequencyHz: number): TuningTarget | null {
+    const closest = findClosestTuningTarget(frequencyHz);
+    if (!closest) {
+      return null;
+    }
+
+    const lastTarget = this.getLastAutoTarget();
+    if (!lastTarget || lastTarget.id === closest.id) {
+      this.lastAutoTargetId = closest.id;
+      return closest;
+    }
+
+    const centsToClosest = Math.abs(getCentsOffset(frequencyHz, closest.frequencyHz));
+    const centsToLast = Math.abs(getCentsOffset(frequencyHz, lastTarget.frequencyHz));
+
+    if (centsToClosest + TARGET_SWITCH_MARGIN_CENTS < centsToLast) {
+      this.lastAutoTargetId = closest.id;
+      return closest;
+    }
+
+    return lastTarget;
+  }
+
+  private getLastAutoTarget(): TuningTarget | null {
+    if (!this.lastAutoTargetId) {
+      return null;
+    }
+
+    try {
+      return getStandardTuningTarget(this.lastAutoTargetId);
+    } catch {
+      this.lastAutoTargetId = null;
+      return null;
+    }
   }
 
   private interpretManualMode(
