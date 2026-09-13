@@ -41,6 +41,9 @@ export function NoteStage({ feedback, targetLabel, liveRef }: NoteStageProps) {
       <StringLine liveRef={liveRef} />
 
       <div className="stage-data">
+        <span className="stage-mode-badge" data-tone={feedback.tone}>
+          {feedback.modeLabel}
+        </span>
         {feedback.frequencyLabel ? <strong>{feedback.frequencyLabel}</strong> : <span>— Hz</span>}
         {feedback.centsLabel ? (
           <span className="stage-data-cents" data-tone={feedback.tone}>

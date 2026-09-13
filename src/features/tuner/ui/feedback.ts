@@ -4,7 +4,8 @@ import type {
   TuningInterpretation,
   TunerViewModel,
 } from "../../../types/pitchTracking";
-import type { TunerState } from "../../../types/tuner";
+import type { NoteName, TunerState } from "../../../types/tuner";
+import { getCentsOffset, midiToFrequency, noteNameToMidi, parseNoteCode } from "../../../lib/music";
 
 /**
  * 全站唯一的调音反馈推导。
@@ -19,6 +20,8 @@ export type TunerFeedback = {
   /** 状态相位,用于过渡动画 key */
   readonly phase: string;
   readonly tone: FeedbackTone;
+  /** 当前模式徽标:自动跟随 / 手动选弦 / 自由模式 */
+  readonly modeLabel: string;
   /** 舞台大音符,如 "E";无信号为 "--" */
   readonly noteLabel: string;
   readonly octaveLabel: number | null;
@@ -67,23 +70,10 @@ function getTargetLabel(state: TunerState, viewModel: TunerViewModel): string | 
 }
 
 /**
- * 引擎的 detectedNote 是 "E2"/"F#" 这种带八度的完整音名,
+ * 引擎的 detectedNote 是 "E2"/"F#" 这种音名代码,
  * 舞台大音符需要拆成 音名 + 八度下标,否则会渲染成 "E22"。
+ * 解析统一走 lib/music 的 parseNoteCode。
  */
-function parseNoteCode(code: string | null | undefined): {
-  note: string;
-  octave: number | null;
-  sharp: boolean;
-} | null {
-  if (!code) {
-    return null;
-  }
-  const match = /^([A-G]#?)(-?\d+)$/.exec(code);
-  if (match) {
-    return { note: match[1], octave: Number(match[2]), sharp: match[1].includes("#") };
-  }
-  return { note: code, octave: null, sharp: code.includes("#") };
-}
 
 export function deriveFeedback(input: {
   state: TunerState;
@@ -92,14 +82,24 @@ export function deriveFeedback(input: {
   trackingState: PitchTrackingState | null;
   rawCandidate: RawPitchCandidate | null;
   frameRms: number | null | undefined;
-  manualMode: boolean;
+  /** 兼容旧调用方;模式以 state.selection.mode 为准 */
+  manualMode?: boolean;
+  chromaticMode?: boolean;
+  /** 自由模式下被选定的目标音(null = 自动参照最近半音) */
+  chromaticTargetNote: { note: NoteName; octave: number } | null;
 }): TunerFeedback {
-  const { state, viewModel, interpretation, trackingState, rawCandidate, manualMode } = input;
+  const { state, viewModel, interpretation, trackingState, rawCandidate, chromaticTargetNote } = input;
+  const manualMode = state.selection.mode === "manual";
+  const chromaticMode = state.selection.mode === "chromatic";
   const frameRms = typeof input.frameRms === "number" ? input.frameRms : 0;
 
   const trackedHz = trackingState?.trackedFrequencyHz ?? null;
   const rawHz = rawCandidate?.frequencyHz ?? null;
   const hasPitch = trackedHz !== null || rawHz !== null;
+
+  const autoHint = chromaticMode
+    ? "自由模式 · 点琴弦可切手动锁定"
+    : "自动跟随 · 点击琴弦可手动锁定";
 
   const base = {
     octaveLabel: null as number | null,
@@ -111,6 +111,7 @@ export function deriveFeedback(input: {
     needleActive: false,
     arrow: null as TunerFeedback["arrow"],
     targetLabel: getTargetLabel(state, viewModel),
+    modeLabel: chromaticMode ? "自由模式" : manualMode ? "手动选弦" : "自动跟随",
     micLive:
       state.audioStatus === "listening" ||
       state.audioStatus === "ready" ||
@@ -158,7 +159,7 @@ export function deriveFeedback(input: {
       tone: "idle",
       noteLabel: "—",
       headline: "点击开始,授权麦克风后拨弦即测",
-      railHint: "自动跟随 · 点击琴弦可手动锁定",
+      railHint: autoHint,
     };
   }
 
@@ -167,7 +168,7 @@ export function deriveFeedback(input: {
   const frequencyLabel =
     typeof liveHz === "number" ? `${liveHz >= 100 ? liveHz.toFixed(1) : liveHz.toFixed(2)} Hz` : null;
 
-  const parsedNote = parseNoteCode(interpretation?.detectedNote);
+  const parsedNote = parseNoteCode(interpretation?.detectedNote ?? "");
   const nearestNote =
     parsedNote?.note ??
     state.stabilizedPitch?.noteName ??
@@ -183,6 +184,19 @@ export function deriveFeedback(input: {
     parsedNote && parsedNote.octave !== null
       ? `${parsedNote.note}${parsedNote.octave}`
       : nearestNote;
+
+  // 自由模式的"目标"就是最近的半音名——目标栏要随时反映参照物,而不是显示"待锁定"
+  const referenceCode = chromaticTargetNote
+    ? `${chromaticTargetNote.note}${chromaticTargetNote.octave}`
+    : nearestCode;
+  const chromaticTargetLabel =
+    chromaticMode && referenceCode
+      ? chromaticTargetNote
+        ? referenceCode
+        : `${referenceCode} · 自由`
+      : null;
+  // 参照物确定后统一覆盖目标栏,后面的分支不再各自判断模式
+  base.targetLabel = chromaticMode ? chromaticTargetLabel : base.targetLabel;
 
   if (!hasPitch) {
     if (frameRms <= SILENT_RMS) {
@@ -221,7 +235,7 @@ export function deriveFeedback(input: {
       tone: "idle",
       noteLabel: "—",
       headline: "拨一根弦,让它响",
-      railHint: "自动跟随 · 点击琴弦可手动锁定",
+      railHint: autoHint,
     };
   }
 
@@ -238,8 +252,9 @@ export function deriveFeedback(input: {
       isSharpNote: nearestSharp,
       frequencyLabel,
       needlePercent: 0,
+
       headline: stage === "acquiring" ? "听到了 — 让这个音再多响一会儿" : "正在锁定 — 保持住",
-      railHint: "自动跟随 · 点击琴弦可手动锁定",
+      railHint: autoHint,
     };
   }
 
@@ -255,6 +270,7 @@ export function deriveFeedback(input: {
       centsLabel: interpretation?.centsOffset !== null && interpretation?.centsOffset !== undefined
         ? formatCents(interpretation.centsOffset)
         : null,
+
       headline: "信号在变弱 — 延音不够了,重新拨一次",
       railHint: "延音衰减",
     };
@@ -269,14 +285,29 @@ export function deriveFeedback(input: {
       octaveLabel: nearestOctave,
       isSharpNote: nearestSharp,
       frequencyLabel,
+
       headline: "余音结束了 — 再拨一次",
       railHint: "等待拨弦",
     };
   }
 
   // ---- locked:给出方向指令 --------------------------------------
-  const cents = interpretation?.centsOffset ?? state.deviation?.cents ?? null;
-  const direction = interpretation?.direction ?? "unknown";
+  let cents = interpretation?.centsOffset ?? state.deviation?.cents ?? null;
+  let direction = interpretation?.direction ?? "unknown";
+
+  // 自由模式选定了目标音:音分与方向都以它为参照重算,
+  // 检测音离目标超过半音时,指针表依然给出指向目标的真实距离。
+  if (chromaticMode && chromaticTargetNote) {
+    const referenceHz = midiToFrequency(
+      noteNameToMidi(chromaticTargetNote.note, chromaticTargetNote.octave),
+    );
+    const liveHz = trackedHz ?? rawHz;
+    if (liveHz !== null) {
+      cents = getCentsOffset(liveHz, referenceHz);
+      direction = Math.abs(cents) <= 5 ? "in-tune" : cents < 0 ? "flat" : "sharp";
+    }
+  }
+
   const targetCode = state.activeTarget
     ? `${state.activeTarget.note}${state.activeTarget.octave}`
     : null;
@@ -297,7 +328,6 @@ export function deriveFeedback(input: {
       frequencyLabel,
       needlePercent: 0,
       needleActive: true,
-      targetLabel: getTargetLabel(state, viewModel),
       headline: `这是 ${targetCode} 以外的音 — 请只拨目标弦`,
       railHint: "手动选弦中",
     };
@@ -317,12 +347,20 @@ export function deriveFeedback(input: {
       needlePercent,
       needleActive: true,
       arrow: "✓",
-      headline: "音准了 — 这根弦 OK,调下一根",
-      railHint: manualMode ? "手动选弦 · 只拨目标弦" : "自动跟随 · 点击琴弦可手动锁定",
+
+      headline: chromaticMode
+        ? `${referenceCode ?? "这个音"} 音准了`
+        : "音准了 — 这根弦 OK,调下一根",
+      railHint: manualMode ? "手动选弦 · 只拨目标弦" : autoHint,
     };
   }
 
   const isFlat = direction === "flat" || (cents !== null && cents < 0);
+  const chromaticHeadline = chromaticMode && referenceCode
+    ? isFlat
+      ? `偏低 — 拧紧到 ${referenceCode}`
+      : `偏高 — 放松到 ${referenceCode}`
+    : null;
 
   return {
     ...base,
@@ -336,7 +374,7 @@ export function deriveFeedback(input: {
     needlePercent,
     needleActive: true,
     arrow: isFlat ? "◀" : "▶",
-    headline: isFlat ? "偏低 — 拧紧琴弦" : "偏高 — 放松琴弦",
-    railHint: manualMode ? "手动选弦 · 只拨目标弦" : "自动跟随 · 点击琴弦可手动锁定",
+    headline: chromaticHeadline ?? (isFlat ? "偏低 — 拧紧琴弦" : "偏高 — 放松琴弦"),
+    railHint: manualMode ? "手动选弦 · 只拨目标弦" : autoHint,
   };
 }

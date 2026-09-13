@@ -5,7 +5,10 @@ import type {
   TunerViewModel,
 } from "../../../types/pitchTracking";
 import type { TunerState } from "../../../types/tuner";
-import { STANDARD_GUITAR_TUNING } from "../../../lib/music";
+import {
+  DEFAULT_TUNING_ID,
+  STANDARD_TUNING_TARGETS,
+} from "../../../lib/music";
 import { INITIAL_TUNER_STATE } from "../model/tunerState";
 import { createEmptyViewModel } from "../model/tunerViewModel";
 import type { LiveAudioSample } from "../model/useTunerPrototype";
@@ -26,7 +29,8 @@ export type DemoFixture = {
 };
 
 const NOW = 0;
-const TARGET_E2 = STANDARD_GUITAR_TUNING[0];
+export const DEMO_TARGETS = STANDARD_TUNING_TARGETS;
+const TARGET_E2 = DEMO_TARGETS[0];
 
 function listeningState(overrides: Partial<TunerState>): TunerState {
   return {
@@ -184,8 +188,8 @@ export const DEMO_SCENARIOS: Record<string, DemoFixture> = {
     // 手动锁定 5 弦 A2,但弹的是 6 弦的音 → 错音提示
     state: listeningState({
       uiStatus: "detecting",
-      selection: { mode: "manual", targetId: "string-5" },
-      activeTarget: STANDARD_GUITAR_TUNING[1],
+      selection: { tuningId: DEFAULT_TUNING_ID, mode: "manual", targetId: "string-5" },
+      activeTarget: DEMO_TARGETS[1],
       deviation: { cents: -499.8, direction: "flat" },
       detectedPitch: {
         frequencyHz: 82.4,
@@ -231,6 +235,58 @@ export const DEMO_SCENARIOS: Record<string, DemoFixture> = {
       confidence: 0.9,
       stage: "locked",
       centsOffset: -499.8,
+    },
+  },
+  chromatic: {
+    // 自由模式:不归属弦,以最近半音名 G#2 为参照显示 +35¢
+    state: listeningState({
+      uiStatus: "detecting",
+      selection: { tuningId: DEFAULT_TUNING_ID, mode: "chromatic", targetId: null },
+      deviation: { cents: 35.4, direction: "sharp" },
+      detectedPitch: {
+        frequencyHz: 106.0,
+        clarity: 0.93,
+        timestampMs: NOW,
+        source: "microphone",
+        rms: 0.021,
+        noteName: "G#",
+        octave: 2,
+        cents: 35.4,
+      },
+    }),
+    viewModel: {
+      uiStage: "locked",
+      displayFrequency: "G#2",
+      displayCents: "+35¢",
+      displayTarget: null,
+      needlePosition: 0.71,
+      showSuccess: false,
+      statusMessage: "",
+      confidence: 0.93,
+    },
+    interpretation: {
+      detectedFrequencyHz: 106.0,
+      detectedNote: "G#2",
+      targetId: null,
+      targetFrequencyHz: 103.83,
+      centsOffset: 35.4,
+      direction: "sharp",
+      confidence: 0.93,
+      trackingStage: "locked",
+    },
+    trackingState: lockedTracking(106.0),
+    rawCandidate: lockedCandidate(106.0),
+    frameRms: 0.021,
+    activeInputLabel: "默认 — 麦克风 (Realtek Audio)",
+    liveSample: {
+      timestampMs: NOW,
+      rms: 0.021,
+      peak: 0.09,
+      frequencyHz: 106.0,
+      trackedFrequencyHz: 106.0,
+      confidence: 0.93,
+      stage: "locked",
+      centsOffset: 35.4,
     },
   },
   tune: {

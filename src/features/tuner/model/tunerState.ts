@@ -1,8 +1,8 @@
 import {
+  DEFAULT_TUNING_ID,
   createDeviationFromCents,
   findClosestTuningTarget,
   getCentsOffset,
-  getStandardTuningTarget,
 } from "../../../lib/music";
 import type {
   PitchReading,
@@ -15,6 +15,7 @@ import type {
 } from "../../../types/tuner";
 
 export const DEFAULT_TUNER_SELECTION: TunerSelection = {
+  tuningId: DEFAULT_TUNING_ID,
   mode: "auto",
   targetId: null,
 };
@@ -48,9 +49,12 @@ export function createTunerStateSnapshot(input: TunerSnapshotInput = {}): TunerS
   };
 }
 
-export function getSelectedTarget(selection: TunerSelection): TuningTarget | null {
+export function getSelectedTarget(
+  selection: TunerSelection,
+  targets: readonly TuningTarget[],
+): TuningTarget | null {
   if (selection.mode === "manual" && selection.targetId) {
-    return getStandardTuningTarget(selection.targetId);
+    return targets.find((target) => target.id === selection.targetId) ?? null;
   }
 
   return null;
@@ -84,8 +88,14 @@ export function resolveActiveTarget(
   selection: TunerSelection,
   detectedPitch: PitchReading | null,
   stabilizedPitch: StabilizedPitchReading | null,
+  targets: readonly TuningTarget[],
 ): TuningTarget | null {
-  const manuallySelectedTarget = getSelectedTarget(selection);
+  // 自由模式没有弦归属
+  if (selection.mode === "chromatic") {
+    return null;
+  }
+
+  const manuallySelectedTarget = getSelectedTarget(selection, targets);
 
   if (manuallySelectedTarget) {
     return manuallySelectedTarget;
@@ -96,7 +106,7 @@ export function resolveActiveTarget(
   }
 
   if (detectedPitch) {
-    return findClosestTuningTarget(detectedPitch.frequencyHz);
+    return findClosestTuningTarget(detectedPitch.frequencyHz, targets);
   }
 
   return null;

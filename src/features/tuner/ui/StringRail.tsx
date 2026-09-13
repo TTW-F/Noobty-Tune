@@ -1,7 +1,13 @@
-import { STANDARD_GUITAR_TUNING } from "../../../lib/music";
-import type { TuningStringId } from "../../../types/tuner";
+import { BUILTIN_TUNINGS } from "../../../lib/music";
+import type { Tuning, TuningId, TuningStringId, TuningTarget } from "../../../types/tuner";
 
 type StringRailProps = {
+  /** 当前调弦解析出的目标列表,轨道由它驱动 */
+  targets: readonly TuningTarget[];
+  /** 当前激活的调弦 id(预设条高亮用) */
+  tuningId: TuningId;
+  /** 本地保存的自定义调弦 */
+  customTunings: readonly Tuning[];
   activeTargetId: TuningStringId | null;
   /** 手动模式下当前选中的弦(即使还没有检测到音高) */
   selectionTargetId: TuningStringId | null;
@@ -11,15 +17,20 @@ type StringRailProps = {
   manualMode: boolean;
   railHint: string;
   onSelectTarget: (id: TuningStringId) => void;
+  onSelectTuning: (tuningId: TuningId) => void;
+  onDeleteTuning: (tuningId: TuningId) => void;
+  onOpenCustomEditor: () => void;
   onEnableAuto: () => void;
-  onEnterManual: () => void;
 };
 
 /**
- * 六弦轨道:既是目标导航,也是本会话的调音进度。
- * 模式开关显式放在轨道上方——自动跟随识别你拨的弦,手动选弦固定一根。
+ * 弦轨道:既是目标导航,也是本会话的调音进度(仅弦模式渲染)。
+ * 预设条点击整体覆盖目标;模式开关独立于本组件,由页面级 mode-bar 呈现。
  */
 export function StringRail({
+  targets,
+  tuningId,
+  customTunings,
   activeTargetId,
   selectionTargetId,
   tunedIds,
@@ -27,11 +38,13 @@ export function StringRail({
   manualMode,
   railHint,
   onSelectTarget,
+  onSelectTuning,
+  onDeleteTuning,
+  onOpenCustomEditor,
   onEnableAuto,
-  onEnterManual,
 }: StringRailProps) {
   const manualTarget = manualMode
-    ? (STANDARD_GUITAR_TUNING.find((target) => target.id === (selectionTargetId ?? activeTargetId)) ??
+    ? (targets.find((target) => target.id === (selectionTargetId ?? activeTargetId)) ??
       null)
     : null;
 
@@ -42,32 +55,70 @@ export function StringRail({
     : railHint;
 
   return (
-    <section className="rail-zone" aria-label="标准调弦目标">
+    <section className="rail-zone" aria-label="调弦目标">
+      <div className="preset-bar" role="group" aria-label="调弦预设">
+        {BUILTIN_TUNINGS.map((tuning) => (
+          <button
+            key={tuning.id}
+            type="button"
+            className="preset-chip"
+            aria-pressed={tuning.id === tuningId}
+            onClick={() => {
+              onSelectTuning(tuning.id);
+            }}
+          >
+            {tuning.name}
+          </button>
+        ))}
+
+        {customTunings.map((tuning) => (
+          <span key={tuning.id} className="preset-chip-group">
+            <button
+              type="button"
+              className="preset-chip preset-chip-custom"
+              aria-pressed={tuning.id === tuningId}
+              onClick={() => {
+                onSelectTuning(tuning.id);
+              }}
+            >
+              {tuning.name}
+            </button>
+            <button
+              type="button"
+              className="preset-chip-delete"
+              aria-label={`删除调弦 ${tuning.name}`}
+              onClick={() => {
+                if (window.confirm(`删除自定义调弦 "${tuning.name}"?`)) {
+                  onDeleteTuning(tuning.id);
+                }
+              }}
+            >
+              ✕
+            </button>
+          </span>
+        ))}
+
+        <button
+          type="button"
+          className="preset-chip preset-chip-add"
+          onClick={onOpenCustomEditor}
+        >
+          ＋ 自定义
+        </button>
+      </div>
+
       <div className="rail-head">
-        <h2 className="rail-title">E A D G B E</h2>
+        <h2 className="rail-title">{targets.map((target) => target.note).join(" ")}</h2>
         <div className="rail-controls">
-          <div className="mode-switch" role="group" aria-label="选弦模式">
-            <button
-              type="button"
-              aria-pressed={!manualMode}
-              onClick={onEnableAuto}
-            >
-              自动跟随
-            </button>
-            <button
-              type="button"
-              aria-pressed={manualMode}
-              onClick={onEnterManual}
-            >
-              手动选弦
-            </button>
-          </div>
           <p className="rail-hint">{hint}</p>
         </div>
       </div>
 
-      <div className="rail">
-        {STANDARD_GUITAR_TUNING.map((target) => {
+      <div
+        className="rail"
+        style={{ gridTemplateColumns: `repeat(${targets.length}, minmax(0, 1fr))` }}
+      >
+        {targets.map((target) => {
           const isTarget = activeTargetId === target.id;
           const isMatched = matchedTargetId === target.id;
           return (

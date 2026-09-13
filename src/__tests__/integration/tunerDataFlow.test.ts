@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { ContinuousPitchTracker } from "../../lib/audio/continuousPitchTracker";
+import { STANDARD_TUNING_TARGETS } from "../../lib/music/tuning";
 import { TuningInterpreter } from "../../lib/music/tuningInterpreter";
 import { TunerViewModelBuilder } from "../../features/tuner/model/tunerViewModel";
 import type { RawPitchCandidate } from "../../types/pitchTracking";
 import type { TunerSelection } from "../../types";
+
+const TARGETS = STANDARD_TUNING_TARGETS;
 
 describe("tuner data flow", () => {
   it("moves from acquiring to locked to degraded to lost without flashing success early", () => {
@@ -12,9 +15,9 @@ describe("tuner data flow", () => {
       holdDurationMs: 225,
       releaseAfterMisses: 6,
     });
-    const interpreter = new TuningInterpreter();
+    const interpreter = new TuningInterpreter(TARGETS);
     const viewModelBuilder = new TunerViewModelBuilder();
-    const selection: TunerSelection = { mode: "auto", targetId: null };
+    const selection: TunerSelection = { tuningId: "builtin:standard-e", mode: "auto", targetId: null };
     let timestampMs = 0;
 
     const acquire = buildFrame(tracker, interpreter, viewModelBuilder, selection, createCandidate(82.41, 0.86, next()));
@@ -50,9 +53,13 @@ describe("tuner data flow", () => {
 
   it("keeps manual targeting available before auto targeting would lock", () => {
     const tracker = new ContinuousPitchTracker();
-    const interpreter = new TuningInterpreter();
+    const interpreter = new TuningInterpreter(TARGETS);
     const viewModelBuilder = new TunerViewModelBuilder();
-    const manualSelection: TunerSelection = { mode: "manual", targetId: "string-6" };
+    const manualSelection: TunerSelection = {
+      tuningId: "builtin:standard-e",
+      mode: "manual",
+      targetId: "string-6",
+    };
 
     const frame = buildFrame(
       tracker,

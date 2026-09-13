@@ -26,6 +26,9 @@ export interface SustainedPitchStabilizerOptions {
   readonly holdFrames?: number; // 丢失后保持最后读数的帧数
 
   readonly maxHistory?: number;
+
+  /** 无 targetHint 且无上次锁定时自动匹配用;不提供则不做目标归属 */
+  readonly targets?: readonly TuningTarget[];
 }
 
 type StabilizerMode = "seeking" | "locked" | "holding";
@@ -48,6 +51,7 @@ export class SustainedPitchStabilizer implements PitchStabilizer {
       maxConsecutiveFailures: options.maxConsecutiveFailures ?? 4, // 允许4帧失败
       holdFrames: options.holdFrames ?? 8, // 保持8帧（约600ms）
       maxHistory: options.maxHistory ?? 8,
+      targets: options.targets,
     };
   }
 
@@ -150,7 +154,9 @@ export class SustainedPitchStabilizer implements PitchStabilizer {
     }
 
     const recentWindow = this.history.slice(-requiredSamples);
-    const target = targetHint ?? findClosestTuningTarget(recentWindow[0].frequencyHz);
+    const target = targetHint ?? (this.options.targets
+      ? findClosestTuningTarget(recentWindow[0].frequencyHz, this.options.targets)
+      : null);
     const referenceFrequencyHz = target?.frequencyHz ?? recentWindow[0].frequencyHz;
     const centsValues = recentWindow.map((item) => getCentsOffset(item.frequencyHz, referenceFrequencyHz));
     const spread = getSpreadInCents(centsValues);
@@ -174,7 +180,12 @@ export class SustainedPitchStabilizer implements PitchStabilizer {
       return null;
     }
 
-    const target = targetHint ?? this.lastValidReading?.target ?? findClosestTuningTarget(recentWindow[0].frequencyHz);
+    const target =
+      targetHint ??
+      this.lastValidReading?.target ??
+      (this.options.targets
+        ? findClosestTuningTarget(recentWindow[0].frequencyHz, this.options.targets)
+        : null);
     const referenceFrequencyHz = target?.frequencyHz ?? recentWindow[0].frequencyHz;
     const centsValues = recentWindow.map((item) => getCentsOffset(item.frequencyHz, referenceFrequencyHz));
     const spread = getSpreadInCents(centsValues);

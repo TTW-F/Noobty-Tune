@@ -1,8 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { RollingPitchStabilizer } from "./pitchStabilizer";
-import { getStandardTuningTarget } from "../music";
-import type { PitchReading } from "../../types/tuner";
+import { STANDARD_TUNING_TARGETS } from "../music";
+import type { PitchReading, TuningStringId, TuningTarget } from "../../types/tuner";
+
+const TARGETS = STANDARD_TUNING_TARGETS;
+
+function findTarget(targetId: TuningStringId): TuningTarget {
+  const target = TARGETS.find((item) => item.id === targetId);
+  assert.ok(target, `missing target ${targetId}`);
+  return target;
+}
 
 function createReading(
   frequencyHz: number,
@@ -24,6 +32,7 @@ test("stabilizer returns stable output after enough close readings", () => {
     requiredSamples: 3,
     centsTolerance: 12,
     clarityThreshold: 0.8,
+    targets: TARGETS,
   });
 
   stabilizer.push(createReading(109.8, 1));
@@ -59,7 +68,7 @@ test("stabilizer honors a manual target hint instead of auto-closest target", ()
     centsTolerance: 20,
     clarityThreshold: 0.8,
   });
-  const manualHighE = getStandardTuningTarget("string-1");
+  const manualHighE = findTarget("string-1");
 
   stabilizer.push(createReading(329.4, 1), manualHighE);
   const result = stabilizer.push(createReading(329.8, 2), manualHighE);
@@ -76,6 +85,7 @@ test("stabilizer marks wide pitch spread as unstable", () => {
     requiredSamples: 3,
     centsTolerance: 5,
     clarityThreshold: 0.8,
+    targets: TARGETS,
   });
 
   stabilizer.push(createReading(82.41, 1));

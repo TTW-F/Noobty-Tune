@@ -7,8 +7,22 @@ import {
   resolveActiveTarget,
   resolveDeviation,
 } from "./tunerState";
-import { getStandardTuningTarget } from "../../../lib/music";
-import type { PitchReading, StabilizedPitchReading, TunerEngineError } from "../../../types/tuner";
+import { STANDARD_TUNING_TARGETS } from "../../../lib/music";
+import type {
+  PitchReading,
+  StabilizedPitchReading,
+  TunerEngineError,
+  TuningStringId,
+  TuningTarget,
+} from "../../../types/tuner";
+
+const TARGETS = STANDARD_TUNING_TARGETS;
+
+function findTarget(targetId: TuningStringId): TuningTarget {
+  const target = TARGETS.find((item) => item.id === targetId);
+  assert.ok(target, `missing target ${targetId}`);
+  return target;
+}
 
 function createReading(frequencyHz: number): PitchReading {
   return {
@@ -19,8 +33,8 @@ function createReading(frequencyHz: number): PitchReading {
   };
 }
 
-function createStableReading(frequencyHz: number, targetId: "string-6" | "string-5"): StabilizedPitchReading {
-  const target = getStandardTuningTarget(targetId);
+function createStableReading(frequencyHz: number, targetId: TuningStringId): StabilizedPitchReading {
+  const target = findTarget(targetId);
   return {
     frequencyHz,
     clarity: 0.95,
@@ -60,9 +74,10 @@ test("createPermissionDeniedState preserves denial error information", () => {
 
 test("resolveActiveTarget prefers manual selection over detected or stabilized targets", () => {
   const target = resolveActiveTarget(
-    { mode: "manual", targetId: "string-1" },
+    { tuningId: "builtin:standard-e", mode: "manual", targetId: "string-1" },
     createReading(82.41),
     createStableReading(82.41, "string-6"),
+    TARGETS,
   );
 
   assert.ok(target);
@@ -74,8 +89,9 @@ test("resolveActiveTarget falls back to stabilized target, then detected pitch",
     DEFAULT_TUNER_SELECTION,
     null,
     createStableReading(110, "string-5"),
+    TARGETS,
   );
-  const detectedOnly = resolveActiveTarget(DEFAULT_TUNER_SELECTION, createReading(82.41), null);
+  const detectedOnly = resolveActiveTarget(DEFAULT_TUNER_SELECTION, createReading(82.41), null, TARGETS);
 
   assert.ok(stabilized);
   assert.equal(stabilized!.id, "string-5");
@@ -83,8 +99,19 @@ test("resolveActiveTarget falls back to stabilized target, then detected pitch",
   assert.equal(detectedOnly!.id, "string-6");
 });
 
+test("resolveActiveTarget returns null in chromatic mode (no string attribution)", () => {
+  const target = resolveActiveTarget(
+    { tuningId: "builtin:standard-e", mode: "chromatic", targetId: null },
+    createReading(82.41),
+    createStableReading(82.41, "string-6"),
+    TARGETS,
+  );
+
+  assert.equal(target, null);
+});
+
 test("resolveDeviation uses stabilized reading when available", () => {
-  const target = getStandardTuningTarget("string-5");
+  const target = findTarget("string-5");
   const deviation = resolveDeviation(target, createStableReading(111, "string-5"), createReading(109));
 
   assert.ok(deviation);
@@ -94,5 +121,5 @@ test("resolveDeviation uses stabilized reading when available", () => {
 
 test("resolveDeviation returns null when target or reading is missing", () => {
   assert.equal(resolveDeviation(null, null, createReading(110)), null);
-  assert.equal(resolveDeviation(getStandardTuningTarget("string-5"), null, null), null);
+  assert.equal(resolveDeviation(findTarget("string-5"), null, null), null);
 });

@@ -7,6 +7,8 @@ export function App() {
   const logs = useDeveloperLogs();
   const {
     state,
+    targets,
+    customTunings,
     rawCandidate,
     trackingState,
     interpretation,
@@ -20,7 +22,11 @@ export function App() {
     resetSession,
     refreshInputDevices,
     selectInputDevice,
+    selectTuning,
+    saveCustomTuning,
+    deleteCustomTuning,
     enableAutoTargetMode,
+    enableChromaticMode,
     selectManualTarget,
     isStarting,
     debugLogger,
@@ -71,6 +77,8 @@ export function App() {
   return (
     <TunerScreen
       state={state}
+      targets={targets}
+      customTunings={customTunings}
       rawCandidate={rawCandidate}
       trackingState={trackingState}
       interpretation={interpretation}
@@ -86,7 +94,11 @@ export function App() {
       activeInputLabel={activeInputLabel}
       onRefreshInputs={refreshInputDevices}
       onSelectInput={selectInputDevice}
+      onSelectTuning={selectTuning}
+      onSaveCustomTuning={saveCustomTuning}
+      onDeleteTuning={deleteCustomTuning}
       onEnableAutoTargetMode={enableAutoTargetMode}
+      onEnableChromaticMode={enableChromaticMode}
       onSelectManualTarget={selectManualTarget}
     />
   );

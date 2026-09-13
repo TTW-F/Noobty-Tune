@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AutoCorrelationPitchDetector,
   type AudioInputDevice,
@@ -12,17 +12,26 @@ import {
 import { createScopedLogger } from "../../../lib/logging/developerLogger";
 import { globalTimeSeriesLogger } from "../../../lib/logging/timeSeriesLogger";
 import {
+  CHROMATIC_NOTE_NAMES,
+  DEFAULT_TUNING_ID,
+  createCustomTuning,
   createDeviationFromCents,
   getClosestNoteMatch,
-  getStandardTuningTarget,
+  getTuning,
+  resolveTargets,
   TuningInterpreter,
 } from "../../../lib/music";
 import type {
+  NoteName,
   PitchReading,
   StabilizedPitchReading,
   TunerEngineError,
+  TunerSelection,
   TunerState,
+  Tuning,
+  TuningId,
   TuningStringId,
+  TuningStringSpec,
   TuningTarget,
 } from "../../../types";
 import type {
@@ -33,7 +42,6 @@ import type {
   TunerViewModel,
 } from "../../../types/pitchTracking";
 import {
-  DEFAULT_TUNER_SELECTION,
   createListeningState,
   createPermissionDeniedState,
   createTunerStateSnapshot,
@@ -48,6 +56,130 @@ const detectorLogger = createScopedLogger("detector");
 const stabilizerLogger = createScopedLogger("stabilizer");
 const SIGNAL_PRESENT_RMS = 0.003;
 const SIGNAL_PRESENT_PEAK = 0.03;
+const SELECTION_STORAGE_KEY = "noobty-tuner:selection";
+const CUSTOM_TUNINGS_STORAGE_KEY = "noobty-tuner:custom-tunings";
+
+/**
+ * 读取本地保存的自定义调弦。条目经完整校验,损坏项整条丢弃——
+ * 自定义数据不允许带病运行。
+ */
+export function loadCustomTunings(): Tuning[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(CUSTOM_TUNINGS_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    const tunings: Tuning[] = [];
+    for (const item of parsed) {
+      try {
+        const tuning = reviveCustomTuning(item);
+        tunings.push(tuning);
+      } catch {
+        // 跳过无法解析的条目
+      }
+    }
+    return tunings;
+  } catch {
+    return [];
+  }
+}
+
+function reviveCustomTuning(item: unknown): Tuning {
+  if (typeof item !== "object" || item === null) {
+    throw new Error("not an object");
+  }
+  const candidate = item as {
+    id?: unknown;
+    name?: unknown;
+    strings?: unknown;
+  };
+
+  if (
+    typeof candidate.id !== "string" ||
+    !candidate.id.startsWith("custom:") ||
+    typeof candidate.name !== "string" ||
+    !candidate.name.trim() ||
+    !Array.isArray(candidate.strings)
+  ) {
+    throw new Error("bad shape");
+  }
+
+  const strings: TuningStringSpec[] = candidate.strings.map((raw) => {
+    if (typeof raw !== "object" || raw === null) {
+      throw new Error("bad string");
+    }
+    const spec = raw as { number?: unknown; note?: unknown; octave?: unknown };
+    const note = spec.note;
+    if (
+      !Number.isInteger(spec.number) ||
+      typeof note !== "string" ||
+      !CHROMATIC_NOTE_NAMES.includes(note as NoteName) ||
+      !Number.isInteger(spec.octave)
+    ) {
+      throw new Error("bad string");
+    }
+    return { number: spec.number as number, note: note as NoteName, octave: spec.octave as number };
+  });
+
+  // 复用保存路径的全部校验(弦数边界/重复弦号/音域)
+  const tuning = createCustomTuning(candidate.name, strings);
+  return { ...tuning, id: candidate.id };
+}
+
+/**
+ * 恢复上次的调弦与模式;调弦失效或数据损坏时回落默认(auto + 标准 E)。
+ * manual 必须带有效目标才恢复——手动选弦没有目标是未定义状态,回落 auto。
+ */
+export function loadStoredSelection(
+  resolveTuning: (id: TuningId) => Tuning | null = getTuning,
+): TunerSelection {
+  if (typeof window === "undefined") {
+    return INITIAL_TUNER_STATE.selection;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SELECTION_STORAGE_KEY);
+    if (!raw) {
+      return INITIAL_TUNER_STATE.selection;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<TunerSelection>;
+    const tuning = parsed.tuningId ? resolveTuning(parsed.tuningId) : null;
+    if (!tuning) {
+      return INITIAL_TUNER_STATE.selection;
+    }
+
+    const wantsManual = parsed.mode === "manual";
+    const targetId =
+      wantsManual &&
+      typeof parsed.targetId === "string" &&
+      resolveTargets(tuning).some((target) => target.id === parsed.targetId)
+        ? parsed.targetId
+        : null;
+
+    if (parsed.mode !== "auto" && parsed.mode !== "manual" && parsed.mode !== "chromatic") {
+      return INITIAL_TUNER_STATE.selection;
+    }
+
+    return {
+      tuningId: tuning.id,
+      mode: wantsManual && !targetId ? "auto" : parsed.mode,
+      targetId,
+    };
+  } catch {
+    return INITIAL_TUNER_STATE.selection;
+  }
+}
 
 function mapViewModelStageToLegacyUiStatus(
   viewModel: TunerViewModel,
@@ -116,16 +248,18 @@ function toDebugNoteLabel(noteName?: string, octave?: number) {
 function getTargetFromInterpretation(
   interpretation: TuningInterpretation,
   selection: TunerState["selection"],
+  targets: readonly TuningTarget[],
 ): TuningTarget | null {
-  if (selection.mode === "manual" && selection.targetId) {
-    return getStandardTuningTarget(selection.targetId);
-  }
+  const wantedId =
+    selection.mode === "manual" && selection.targetId
+      ? selection.targetId
+      : interpretation.targetId;
 
-  if (!interpretation.targetId) {
+  if (!wantedId) {
     return null;
   }
 
-  return getStandardTuningTarget(interpretation.targetId);
+  return targets.find((target) => target.id === wantedId) ?? null;
 }
 
 function toPitchReading(candidate: RawPitchCandidate): PitchReading | null {
@@ -233,7 +367,8 @@ export function useTunerPrototype() {
       // lock/hold thresholds decide how each clarity band is used.
       probabilityThreshold: 0.82,
       clarityFloor: 0.35,
-      minFrequencyHz: 70,
+      // 55 Hz 覆盖 7 弦吉他的 B1(61.7 Hz);真机低音弦质量仍属 ADR 0006 M4 验收项
+      minFrequencyHz: 55,
       maxFrequencyHz: 360,
       rmsThreshold: 0.008,
     }),
@@ -243,19 +378,49 @@ export function useTunerPrototype() {
       algorithm: "autocorrelation",
       probabilityThreshold: 0.76,
       clarityFloor: 0.35,
-      minFrequencyHz: 70,
+      minFrequencyHz: 55,
       maxFrequencyHz: 360,
       rmsThreshold: 0.008,
     }),
   );
   const trackerRef = useRef(new ContinuousPitchTracker());
-  const interpreterRef = useRef(new TuningInterpreter());
   const viewModelBuilderRef = useRef(new TunerViewModelBuilder());
   const loopHandleRef = useRef<number | null>(null);
-  const selectionRef = useRef(INITIAL_TUNER_STATE.selection);
   const previousUiStatusRef = useRef<TunerState["uiStatus"]>(INITIAL_TUNER_STATE.uiStatus);
 
-  const [state, setState] = useState<TunerState>(INITIAL_TUNER_STATE);
+  const initialCustomTunings = useMemo(() => loadCustomTunings(), []);
+  const [customTunings, setCustomTunings] = useState<Tuning[]>(initialCustomTunings);
+
+  // 内置目录 + 本地自定义注册表 = 完整的调弦解析器
+  const getTuningById = useCallback(
+    (id: TuningId): Tuning | null =>
+      getTuning(id) ?? customTunings.find((tuning) => tuning.id === id) ?? null,
+    [customTunings],
+  );
+
+  const initialSelection = useMemo(
+    () => loadStoredSelection((id) => getTuning(id) ?? initialCustomTunings.find((tuning) => tuning.id === id) ?? null),
+    [initialCustomTunings],
+  );
+  const selectionRef = useRef(initialSelection);
+
+  const [state, setState] = useState<TunerState>(() => ({
+    ...INITIAL_TUNER_STATE,
+    selection: initialSelection,
+  }));
+
+  // 当前调弦 → 目标频率列表。解释器和 UI 都只消费这份解析结果。
+  const targets = useMemo(
+    () =>
+      resolveTargets(
+        getTuning(state.selection.tuningId) ??
+          customTunings.find((tuning) => tuning.id === state.selection.tuningId) ??
+          getTuning(DEFAULT_TUNING_ID)!,
+      ),
+    [state.selection.tuningId, customTunings],
+  );
+  const targetsRef = useRef(targets);
+  const interpreterRef = useRef(new TuningInterpreter(targets));
   const [detectorComparison, setDetectorComparison] = useState<DetectorComparisonDebug>(
     INITIAL_DETECTOR_COMPARISON_DEBUG,
   );
@@ -323,6 +488,30 @@ export function useTunerPrototype() {
   useEffect(() => {
     selectionRef.current = state.selection;
   }, [state.selection]);
+
+  // 记住用户的调弦与模式选择,刷新后恢复
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(state.selection));
+    } catch {
+      // 隐私模式等场景下持久化失败可忽略,不影响功能
+    }
+  }, [state.selection]);
+
+  // 自定义调弦注册表持久化
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CUSTOM_TUNINGS_STORAGE_KEY, JSON.stringify(customTunings));
+    } catch {
+      // 同上,持久化失败不影响本会话使用
+    }
+  }, [customTunings]);
+
+  // 换调弦时同步目标集;setTargets 会清空解释器的迟滞状态(新调弦没有"上一根弦")。
+  useEffect(() => {
+    targetsRef.current = targets;
+    interpreterRef.current.setTargets(targets);
+  }, [targets]);
 
   function processAudioFrame(session: MicrophoneSession) {
     const detector = detectorRef.current;
@@ -484,7 +673,11 @@ export function useTunerPrototype() {
     }
 
     setState((previousState) => {
-      const activeTarget = getTargetFromInterpretation(tuningInterpretation, previousState.selection);
+      const activeTarget = getTargetFromInterpretation(
+        tuningInterpretation,
+        previousState.selection,
+        targetsRef.current,
+      );
       const stabilizedPitch = toTrackedReading(tracked, tuningInterpretation, activeTarget);
       const deviation =
         activeTarget && tuningInterpretation.centsOffset !== null
@@ -598,7 +791,10 @@ export function useTunerPrototype() {
     setInterpretation(null);
     setViewModel(createEmptyViewModel());
     setActiveInputLabel(null);
-    setState(INITIAL_TUNER_STATE);
+    // 保留用户选中的调弦与模式,只结束本次调音会话
+    setState((current) =>
+      createTunerStateSnapshot({ ...INITIAL_TUNER_STATE, selection: current.selection }),
+    );
   }
 
   async function selectInputDevice(deviceId: string) {
@@ -648,12 +844,81 @@ export function useTunerPrototype() {
     await refreshInputDevices();
   }
 
+  function selectTuning(tuningId: TuningId) {
+    const tuning = getTuningById(tuningId);
+    if (!tuning) {
+      return;
+    }
+
+    appLogger.info("Tuning changed", `Switched tuning to ${tuning.name}.`, {
+      meta: { tuningId: tuning.id },
+    });
+    // 换调弦回到自动模式:手动选中的弦在新区间里未必还有意义,
+    // 目标集替换由 targets effect 下发并清空解释器迟滞。
+    setState((previousState) =>
+      createTunerStateSnapshot({
+        ...previousState,
+        selection: { tuningId: tuning.id, mode: "auto", targetId: null },
+      }),
+    );
+  }
+
+  function saveCustomTuning(strings: readonly TuningStringSpec[], name: string) {
+    const tuning = createCustomTuning(name, strings);
+    setCustomTunings((previous) => [...previous, tuning]);
+    appLogger.info("Custom tuning saved", `Saved custom tuning ${tuning.name}.`, {
+      meta: { tuningId: tuning.id, strings: tuning.strings.length },
+    });
+    setState((previousState) =>
+      createTunerStateSnapshot({
+        ...previousState,
+        selection: { tuningId: tuning.id, mode: "auto", targetId: null },
+      }),
+    );
+  }
+
+  function deleteCustomTuning(tuningId: TuningId) {
+    const tuning = customTunings.find((item) => item.id === tuningId);
+    if (!tuning) {
+      return;
+    }
+
+    appLogger.info("Custom tuning deleted", `Deleted custom tuning ${tuning.name}.`, {
+      meta: { tuningId },
+    });
+    setCustomTunings((previous) => previous.filter((item) => item.id !== tuningId));
+
+    // 删除的是当前激活的调弦 → 回落标准 E
+    setState((previousState) =>
+      previousState.selection.tuningId === tuningId
+        ? createTunerStateSnapshot({
+            ...previousState,
+            selection: { tuningId: DEFAULT_TUNING_ID, mode: "auto", targetId: null },
+          })
+        : previousState,
+    );
+  }
+
+  function enableChromaticMode() {
+    appLogger.info("Target mode updated", "Switched target mode to chromatic.");
+    setState((previousState) =>
+      createTunerStateSnapshot({
+        ...previousState,
+        selection: { ...previousState.selection, mode: "chromatic" },
+      }),
+    );
+  }
+
   function enableAutoTargetMode() {
     appLogger.info("Target mode updated", "Switched tuning target mode to auto.");
     setState((previousState) =>
       createTunerStateSnapshot({
         ...previousState,
-        selection: DEFAULT_TUNER_SELECTION,
+        selection: {
+          ...previousState.selection,
+          mode: "auto",
+          targetId: null,
+        },
       }),
     );
   }
@@ -668,6 +933,7 @@ export function useTunerPrototype() {
       createTunerStateSnapshot({
         ...previousState,
         selection: {
+          ...previousState.selection,
           mode: "manual",
           targetId,
         },
@@ -677,6 +943,8 @@ export function useTunerPrototype() {
 
   return {
     state,
+    targets,
+    customTunings,
     detectorComparison,
     availableInputs,
     selectedInputDeviceId,
@@ -686,7 +954,11 @@ export function useTunerPrototype() {
     resetSession,
     refreshInputDevices,
     selectInputDevice,
+    selectTuning,
+    saveCustomTuning,
+    deleteCustomTuning,
     enableAutoTargetMode,
+    enableChromaticMode,
     selectManualTarget,
     isStarting: state.uiStatus === "requesting-permission",
     rawCandidate,

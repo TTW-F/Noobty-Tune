@@ -1,7 +1,6 @@
 import type { PitchTrackingState, TuningInterpretation } from "../../types/pitchTracking";
 import type { TunerSelection, TuningStringId, TuningTarget } from "../../types/tuner";
 import { findClosestTuningTarget, getCentsOffset, getClosestNoteMatch } from "./noteMapping";
-import { getStandardTuningTarget } from "./standardTuning";
 
 /**
  * Auto mode keeps the previously assigned target until another string is
@@ -12,7 +11,20 @@ import { getStandardTuningTarget } from "./standardTuning";
 const TARGET_SWITCH_MARGIN_CENTS = 15;
 
 export class TuningInterpreter {
+  private targets: readonly TuningTarget[];
   private lastAutoTargetId: TuningStringId | null = null;
+
+  constructor(targets: readonly TuningTarget[]) {
+    this.targets = targets;
+  }
+
+  /**
+   * 换调弦时替换目标集。迟滞随目标集一起清空——新调弦没有"上一根弦"。
+   */
+  setTargets(targets: readonly TuningTarget[]): void {
+    this.targets = targets;
+    this.lastAutoTargetId = null;
+  }
 
   reset(): void {
     this.lastAutoTargetId = null;
@@ -31,11 +43,46 @@ export class TuningInterpreter {
       return this.createEmptyInterpretation(trackingState);
     }
 
+    if (selection.mode === "chromatic") {
+      return this.interpretChromaticMode(trackingState);
+    }
+
     if (selection.mode === "manual" && selection.targetId) {
       return this.interpretManualMode(trackingState, selection.targetId);
     }
 
     return this.interpretAutoMode(trackingState);
+  }
+
+  /**
+   * 自由模式:不归属弦,以最近的半音名为参照给出音分偏差。
+   * 只要频率存在就计算——chromatic 没有"目标指派"的诚实性问题,
+   * 因此不做 auto 模式那套 acquiring/tracking 的克制输出。
+   * 永不读写 sticky target:从 chromatic 切回 auto 时不残留归属。
+   */
+  private interpretChromaticMode(trackingState: PitchTrackingState): TuningInterpretation {
+    const { trackedFrequencyHz, stage, confidence } = trackingState;
+
+    if (trackedFrequencyHz === null) {
+      return this.createEmptyInterpretation(trackingState);
+    }
+
+    const nearestNote = getClosestNoteMatch(trackedFrequencyHz);
+    const cents =
+      nearestNote !== null
+        ? getCentsOffset(trackedFrequencyHz, nearestNote.frequencyHz)
+        : null;
+
+    return {
+      detectedFrequencyHz: trackedFrequencyHz,
+      detectedNote: this.getNoteName(trackedFrequencyHz),
+      targetId: null,
+      targetFrequencyHz: nearestNote?.frequencyHz ?? null,
+      centsOffset: cents,
+      direction: cents === null ? "unknown" : this.getDirection(cents),
+      confidence,
+      trackingStage: stage,
+    };
   }
 
   private interpretAutoMode(trackingState: PitchTrackingState): TuningInterpretation {
@@ -81,7 +128,7 @@ export class TuningInterpreter {
    * when the tracked pitch sits near the midpoint between two open strings.
    */
   private resolveAutoTarget(frequencyHz: number): TuningTarget | null {
-    const closest = findClosestTuningTarget(frequencyHz);
+    const closest = findClosestTuningTarget(frequencyHz, this.targets);
     if (!closest) {
       return null;
     }
@@ -108,12 +155,7 @@ export class TuningInterpreter {
       return null;
     }
 
-    try {
-      return getStandardTuningTarget(this.lastAutoTargetId);
-    } catch {
-      this.lastAutoTargetId = null;
-      return null;
-    }
+    return this.targets.find((target) => target.id === this.lastAutoTargetId) ?? null;
   }
 
   private interpretManualMode(
@@ -169,11 +211,7 @@ export class TuningInterpreter {
   }
 
   private getManualTarget(targetId: TuningStringId): TuningTarget | null {
-    try {
-      return getStandardTuningTarget(targetId);
-    } catch {
-      return null;
-    }
+    return this.targets.find((target) => target.id === targetId) ?? null;
   }
 
   private getDirection(cents: number): "flat" | "sharp" | "in-tune" | "unknown" {

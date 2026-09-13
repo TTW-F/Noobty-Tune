@@ -4,7 +4,11 @@ import { YinPitchDetector } from "../pitchDetector";
 import { extractPitchCandidate } from "../pitchCandidateExtractor";
 import { ContinuousPitchTracker } from "../continuousPitchTracker";
 import { TuningInterpreter } from "../../music/tuningInterpreter";
-import type { TunerSelection } from "../../../types/tuner";
+import { STANDARD_TUNING_TARGETS, getTuning, resolveTargets } from "../../music/tuning";
+import type { TunerSelection, TuningTarget } from "../../../types/tuner";
+
+const STANDARD_TARGETS = STANDARD_TUNING_TARGETS;
+const B_STANDARD_7_TARGETS = resolveTargets(getTuning("builtin:b-standard-7")!);
 
 /**
  * End-to-end pipeline tests driven by synthesised plucked-string signals.
@@ -79,18 +83,21 @@ function generatePluck(config: PluckConfig): {
   };
 }
 
-function runTunerPipeline(samples: Float32Array) {
+function runTunerPipeline(
+  samples: Float32Array,
+  targets: readonly TuningTarget[] = STANDARD_TARGETS,
+) {
   const detector = new YinPitchDetector({
     algorithm: "yin",
     probabilityThreshold: 0.82,
     clarityFloor: 0.35,
-    minFrequencyHz: 70,
+    minFrequencyHz: 55,
     maxFrequencyHz: 360,
     rmsThreshold: 0.008,
   });
   const tracker = new ContinuousPitchTracker();
-  const interpreter = new TuningInterpreter();
-  const selection: TunerSelection = { mode: "auto", targetId: null };
+  const interpreter = new TuningInterpreter(targets);
+  const selection: TunerSelection = { tuningId: "builtin:standard-e", mode: "auto", targetId: null };
 
   const frames = [];
   for (let offset = 0; offset + FRAME_SIZE <= samples.length; offset += FRAME_STEP) {
@@ -175,6 +182,61 @@ describe("plucked-string pipeline", () => {
         `tracked ${cents.toFixed(0)} cents away from E2 (octave error?)`,
       );
       assert.equal(frame.interpretation.targetId, "string-6");
+    }
+  });
+
+  it("locks the 7-string low B1 (61.74 Hz) and pins string-7", () => {
+    const pluck = generatePluck({
+      baseFrequencyHz: 61.74,
+      durationSec: 2.0,
+      attackGlideCents: 10,
+    });
+    const frames = runTunerPipeline(pluck.samples, B_STANDARD_7_TARGETS);
+
+    const lockFrame = frames.find((frame) => frame.tracked.stage === "locked");
+    assert.ok(lockFrame, "never reached locked");
+    assert.ok(lockFrame.timeSec <= 0.7, `lock took ${lockFrame.timeSec}s`);
+
+    const lockedFrames = frames.filter((frame) => frame.tracked.stage === "locked");
+    assert.ok(lockedFrames.length > 10, "lock did not hold through the sustain");
+    assert.equal(frames.some((frame) => frame.tracked.stage === "lost"), false);
+
+    let maxErrorCents = 0;
+    for (const frame of lockedFrames) {
+      if (frame.timeSec < 0.8) {
+        continue;
+      }
+      maxErrorCents = Math.max(
+        maxErrorCents,
+        Math.abs(centsBetween(frame.tracked.trackedFrequencyHz ?? 0, pluck.frequencyAt(frame.timeSec))),
+      );
+    }
+    assert.ok(maxErrorCents <= 4, `steady-phase error ${maxErrorCents.toFixed(2)} cents`);
+
+    for (const frame of lockedFrames) {
+      assert.equal(frame.interpretation.targetId, "string-7");
+    }
+  });
+
+  it("still reads the 7-string low B when the mic attenuates its fundamental", () => {
+    const pluck = generatePluck({
+      baseFrequencyHz: 61.74,
+      durationSec: 1.4,
+      fundamentalGain: 0.15,
+      attackGlideCents: 8,
+    });
+    const frames = runTunerPipeline(pluck.samples, B_STANDARD_7_TARGETS);
+
+    const lockedFrames = frames.filter((frame) => frame.tracked.stage === "locked");
+    assert.ok(lockedFrames.length > 5, "never reached locked");
+
+    for (const frame of lockedFrames) {
+      const cents = centsBetween(frame.tracked.trackedFrequencyHz ?? 0, 61.74);
+      assert.ok(
+        Math.abs(cents) < 25,
+        `tracked ${cents.toFixed(0)} cents away from B1 (octave error?)`,
+      );
+      assert.equal(frame.interpretation.targetId, "string-7");
     }
   });
 });

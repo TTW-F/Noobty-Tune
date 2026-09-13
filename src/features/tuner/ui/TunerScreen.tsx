@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { STANDARD_GUITAR_TUNING } from "../../../lib/music";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { DEFAULT_TUNING_ID, parseNoteCode, pickOctaveForNote } from "../../../lib/music";
 import type { AudioInputDevice } from "../../../lib/audio";
 import type { DebugReadoutData } from "../../../components/DebugReadoutCard";
 import type { DeveloperLogEntry } from "../../../lib/logging/developerLogger";
@@ -11,18 +11,32 @@ import type {
   TuningInterpretation,
   TunerViewModel,
 } from "../../../types/pitchTracking";
-import type { TunerState, TuningStringId } from "../../../types/tuner";
+import type {
+  NoteName,
+  TunerState,
+  Tuning,
+  TuningId,
+  TuningStringId,
+  TuningStringSpec,
+  TuningTarget,
+} from "../../../types/tuner";
 import { deriveFeedback } from "./feedback";
+import { ChromaticRuler, type ArmedTarget } from "./ChromaticRuler";
+import { CustomTuningEditor } from "./CustomTuningEditor";
 import { DebugDrawer } from "./DebugDrawer";
 import { MicPopover } from "./MicPopover";
 import { NoteStage } from "./NoteStage";
 import { StatusLine } from "./StatusLine";
 import { StringRail } from "./StringRail";
 import { TunerMeter } from "./TunerMeter";
-import { DEMO_SCENARIOS } from "./demo";
+import { DEMO_SCENARIOS, DEMO_TARGETS } from "./demo";
 
 export type TunerScreenProps = {
   state: TunerState;
+  /** 当前调弦解析出的目标频率列表,轨道与大音符匹配都由它驱动 */
+  targets: readonly TuningTarget[];
+  /** 本地保存的自定义调弦 */
+  customTunings: readonly Tuning[];
   rawCandidate: RawPitchCandidate | null;
   trackingState: PitchTrackingState | null;
   interpretation: TuningInterpretation | null;
@@ -33,7 +47,11 @@ export type TunerScreenProps = {
   onReset: () => void | Promise<void>;
   onRefreshInputs: () => void | Promise<unknown>;
   onSelectInput: (deviceId: string) => void | Promise<void>;
+  onSelectTuning: (tuningId: TuningId) => void;
+  onSaveCustomTuning: (strings: readonly TuningStringSpec[], name: string) => void;
+  onDeleteTuning: (tuningId: TuningId) => void;
   onEnableAutoTargetMode: () => void;
+  onEnableChromaticMode: () => void;
   onSelectManualTarget: (targetId: TuningStringId) => void;
   debugReadout: DebugReadoutData;
   developerLogs: readonly DeveloperLogEntry[];
@@ -63,6 +81,7 @@ export function TunerScreen(props: TunerScreenProps) {
   const interpretation = demo ? demo.interpretation : props.interpretation;
   const trackingState = demo ? demo.trackingState : props.trackingState;
   const rawCandidate = demo ? demo.rawCandidate : props.rawCandidate;
+  const targets = demo ? DEMO_TARGETS : props.targets;
   const frameRms = demo ? demo.frameRms : (props.debugReadout.frameRms ?? null);
   const isStarting = demo ? false : props.isStarting;
   const activeInputLabel = demo ? demo.activeInputLabel : props.activeInputLabel;
@@ -80,6 +99,12 @@ export function TunerScreen(props: TunerScreenProps) {
   const liveRef = demo ? demoLiveRef : props.liveRef;
 
   const manualMode = state.selection.mode === "manual";
+  const chromaticMode = state.selection.mode === "chromatic";
+
+  // 自由模式下被选定的目标音(null = 自动参照最近半音;切回弦模式即清除)
+  const [armedTarget, setArmedTarget] = useState<ArmedTarget | null>(null);
+  // 自定义调弦编辑器
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const feedback = deriveFeedback({
     state,
@@ -89,13 +114,41 @@ export function TunerScreen(props: TunerScreenProps) {
     rawCandidate,
     frameRms,
     manualMode,
+    chromaticMode,
+    chromaticTargetNote: chromaticMode ? armedTarget : null,
   });
 
   // 本会话已调好的弦(锁定 ±5 音分即标记)。
-  // 渲染期条件更新(React 官方 "adjusting state on prop change" 模式),不用 effect。
   const [tunedIds, setTunedIds] = useState<ReadonlySet<TuningStringId>>(new Set());
+
+  // 换调弦时,目标频率没变的弦保留"已调"标记(Drop D 只丢 6 弦的进度)。
+  const prevTargetsRef = useRef<readonly TuningTarget[]>(targets);
+  useEffect(() => {
+    const previousTargets = prevTargetsRef.current;
+    if (previousTargets === targets) {
+      return;
+    }
+    prevTargetsRef.current = targets;
+    setTunedIds((current) => {
+      const kept = new Set<TuningStringId>();
+      for (const id of current) {
+        const before = previousTargets.find((target) => target.id === id);
+        const after = targets.find((target) => target.id === id);
+        if (
+          before &&
+          after &&
+          Math.abs(before.frequencyHz - after.frequencyHz) < 0.01
+        ) {
+          kept.add(id);
+        }
+      }
+      return kept.size === current.size ? current : kept;
+    });
+  }, [targets]);
+
   const tunedTargetId =
     feedback.tone === "true" && state.activeTarget ? state.activeTarget.id : null;
+  // 渲染期条件更新(React 官方 "adjusting state on prop change" 模式),不用 effect。
   if (tunedTargetId && !tunedIds.has(tunedTargetId)) {
     const next = new Set(tunedIds);
     next.add(tunedTargetId);
@@ -110,10 +163,18 @@ export function TunerScreen(props: TunerScreenProps) {
       return null;
     }
     return (
-      STANDARD_GUITAR_TUNING.find((target) => target.note === note && target.octave === octave)?.id ??
+      targets.find((target) => target.note === note && target.octave === octave)?.id ??
       null
     );
-  }, [state.stabilizedPitch, state.detectedPitch]);
+  }, [targets, state.stabilizedPitch, state.detectedPitch]);
+
+  // 自由模式音名尺需要:检测音的音名(不含八度)与频率(配八度用)
+  const detectionFrequencyHz =
+    state.stabilizedPitch?.frequencyHz ?? state.detectedPitch?.frequencyHz ?? null;
+  const detectionNoteName = state.stabilizedPitch?.noteName ?? state.detectedPitch?.noteName ?? null;
+  // interpretation.detectedNote("G#2")比 reading 的 noteName 更新更及时,优先解析它
+  const chromaticNoteClass: NoteName | null =
+    parseNoteCode(interpretation?.detectedNote ?? "")?.note ?? detectionNoteName;
 
   const level = Math.min(1, (frameRms ?? 0) / 0.03);
   const micLive = feedback.micLive;
@@ -125,7 +186,11 @@ export function TunerScreen(props: TunerScreenProps) {
       : "开始调音";
 
   return (
-    <div className="app-frame">
+    <div
+      className="app-frame"
+      data-mode={state.selection.mode}
+      data-demo={demo ? "true" : undefined}
+    >
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">
@@ -150,6 +215,51 @@ export function TunerScreen(props: TunerScreenProps) {
         </div>
       </header>
 
+      {/* 模式开关独立成行:三种模式同位切换,立即可见。demo 夹具锁定展示,不提供切换 */}
+      <div className="mode-bar">
+        {demo ? (
+          <span className="mode-bar-demo-note">demo 模式:{demoKey} — 数据为固定夹具</span>
+        ) : (
+          <div className="mode-switch" role="group" aria-label="调音模式">
+            <button
+              type="button"
+              aria-pressed={!manualMode && !chromaticMode}
+              onClick={() => {
+                setArmedTarget(null);
+                props.onEnableAutoTargetMode();
+              }}
+            >
+              自动跟随
+            </button>
+            <button
+              type="button"
+              aria-pressed={manualMode}
+              onClick={() => {
+                setArmedTarget(null);
+                props.onSelectManualTarget(
+                  state.selection.targetId ??
+                    state.activeTarget?.id ??
+                    targets[0]?.id ??
+                    "string-6",
+                );
+              }}
+            >
+              手动选弦
+            </button>
+            <button
+              type="button"
+              aria-pressed={chromaticMode}
+              onClick={() => {
+                setArmedTarget(null);
+                props.onEnableChromaticMode();
+              }}
+            >
+              自由模式
+            </button>
+          </div>
+        )}
+      </div>
+
       <NoteStage
         feedback={feedback}
         targetLabel={feedback.targetLabel}
@@ -166,25 +276,78 @@ export function TunerScreen(props: TunerScreenProps) {
 
       <StatusLine feedback={feedback} />
 
-      <div className="rail-zone">
-        <StringRail
-          activeTargetId={state.activeTarget?.id ?? null}
-          selectionTargetId={state.selection.targetId}
-          tunedIds={tunedIds}
-          matchedTargetId={matchedTargetId}
-          manualMode={manualMode}
-          railHint={feedback.railHint}
-          onSelectTarget={(id) => {
-            props.onSelectManualTarget(id);
+      {chromaticMode ? (
+        <ChromaticRuler
+          detectedNoteClass={chromaticNoteClass}
+          armed={demo ? null : armedTarget}
+          onArm={
+            demo
+              ? () => {}
+              : (note: NoteName) => {
+                  const octave = pickOctaveForNote(note, detectionFrequencyHz);
+                  setArmedTarget({ note, octave });
+                }
+          }
+          onDisarm={
+            demo
+              ? () => {}
+              : () => {
+                  setArmedTarget(null);
+                }
+          }
+        />
+      ) : (
+        <div className="rail-zone" data-demo={demo ? "true" : undefined}>
+          <StringRail
+            targets={targets}
+            tuningId={demo ? DEFAULT_TUNING_ID : state.selection.tuningId}
+            customTunings={demo ? [] : props.customTunings}
+            activeTargetId={state.activeTarget?.id ?? null}
+            selectionTargetId={state.selection.targetId}
+            tunedIds={tunedIds}
+            matchedTargetId={matchedTargetId}
+            manualMode={manualMode}
+            railHint={feedback.railHint}
+            onSelectTarget={(id) => {
+              if (!demo) {
+                props.onSelectManualTarget(id);
+              }
+            }}
+            onSelectTuning={(id) => {
+              if (!demo) {
+                props.onSelectTuning(id);
+              }
+            }}
+            onDeleteTuning={(id) => {
+              if (!demo) {
+                props.onDeleteTuning(id);
+              }
+            }}
+            onOpenCustomEditor={() => {
+              if (!demo) {
+                setEditorOpen(true);
+              }
+            }}
+            onEnableAuto={() => {
+              if (!demo) {
+                props.onEnableAutoTargetMode();
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {editorOpen ? (
+        <CustomTuningEditor
+          onCancel={() => {
+            setEditorOpen(false);
           }}
-          onEnableAuto={props.onEnableAutoTargetMode}
-          onEnterManual={() => {
-            props.onSelectManualTarget(
-              state.selection.targetId ?? state.activeTarget?.id ?? "string-6",
-            );
+          onSave={(strings, name) => {
+            setEditorOpen(false);
+            props.onSaveCustomTuning(strings, name);
           }}
         />
-      </div>
+      ) : null}
 
       <div className="action-zone">
         {canStart ? (
@@ -215,9 +378,9 @@ export function TunerScreen(props: TunerScreenProps) {
             结束调音
           </button>
         ) : null}
-        {tunedIds.size > 0 ? (
+        {!chromaticMode && tunedIds.size > 0 ? (
           <span className="tuned-count">
-            已调 {tunedIds.size}/6
+            已调 {tunedIds.size}/{targets.length}
           </span>
         ) : null}
       </div>

@@ -6,6 +6,8 @@ export interface PitchStabilizerOptions {
   readonly centsTolerance?: number;
   readonly clarityThreshold?: number;
   readonly maxHistory?: number;
+  /** 无 targetHint 时自动匹配用;不提供则不做目标归属 */
+  readonly targets?: readonly TuningTarget[];
 }
 
 export class RollingPitchStabilizer implements PitchStabilizer {
@@ -34,7 +36,11 @@ export class RollingPitchStabilizer implements PitchStabilizer {
     this.history = [...this.history, reading].slice(-maxHistory);
     const recentWindow = this.history.slice(-requiredSamples);
 
-    const target = targetHint ?? findClosestTuningTarget(reading.frequencyHz);
+    const target =
+      targetHint ??
+      (this.options.targets
+        ? findClosestTuningTarget(reading.frequencyHz, this.options.targets)
+        : null);
     const referenceFrequencyHz = target?.frequencyHz ?? reading.frequencyHz;
     const centsValues = recentWindow.map((item) => getCentsOffset(item.frequencyHz, referenceFrequencyHz));
     const stable = recentWindow.length >= requiredSamples && getSpreadInCents(centsValues) <= (this.options.centsTolerance ?? 10);

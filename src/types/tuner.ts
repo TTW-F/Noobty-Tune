@@ -1,10 +1,24 @@
-export type TuningStringId =
-  | "string-6"
-  | "string-5"
-  | "string-4"
-  | "string-3"
-  | "string-2"
-  | "string-1";
+/**
+ * 弦 ID 是位置编号(1 = 最细弦),在任一调弦内唯一。
+ * 模板字面量类型让 7 弦、贝斯等不需要改类型。
+ */
+export type TuningStringId = `string-${number}`;
+
+export type TuningId = string;
+
+/** 弦规格:存音名,不存频率——频率由 resolveTargets 按 A4 参考音推导。 */
+export interface TuningStringSpec {
+  readonly number: number;
+  readonly note: NoteName;
+  readonly octave: number;
+}
+
+export interface Tuning {
+  readonly id: TuningId;
+  readonly name: string;
+  readonly kind: "builtin" | "custom";
+  readonly strings: readonly TuningStringSpec[];
+}
 
 export type NoteName = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "B";
 
@@ -80,7 +94,13 @@ export interface NoteMatch {
 }
 
 export interface TunerSelection {
-  readonly mode: "auto" | "manual";
+  /** 当前激活的调弦;目标频率由它推导 */
+  readonly tuningId: TuningId;
+  /**
+   * auto: 自动归属最近的弦;manual: 锁定一根弦;chromatic: 自由模式,
+   * 不归属任何弦,按最近的半音名评判(chromatic 下 targetId 被忽略)。
+   */
+  readonly mode: "auto" | "manual" | "chromatic";
   readonly targetId: TuningStringId | null;
 }
 

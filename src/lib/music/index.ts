@@ -1,3 +1,3 @@
-export * from "./standardTuning";
+export * from "./tuning";
 export * from "./noteMapping";
 export * from "./tuningInterpreter";
