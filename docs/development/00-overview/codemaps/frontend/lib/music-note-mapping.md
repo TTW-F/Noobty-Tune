@@ -6,5 +6,5 @@
 
 ## Modules
 ### `lib/music/noteMapping.ts`
-- Imports: `../../types/tuner`, `./standardTuning`
-- Exports: `createDeviationFromCents`, `findClosestTuningTarget`, `frequencyToMidi`, `getCentsOffset`, `getClosestNoteMatch`, `midiToFrequency`
+- Imports: `../../types/tuner`
+- Exports: `CHROMATIC_NOTE_NAMES`, `createDeviationFromCents`, `findClosestTuningTarget`, `frequencyToMidi`, `getCentsOffset`, `getClosestNoteMatch`, `midiToFrequency`, `noteNameToMidi`, `parseNoteCode`, `pickOctaveForNote`

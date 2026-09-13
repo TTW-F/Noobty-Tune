@@ -6,5 +6,5 @@
 
 ## Modules
 ### `lib/music/noteMapping.test.ts`
-- Imports: `./noteMapping`, `node:assert/strict`, `node:test`
+- Imports: `./noteMapping`, `./tuning`, `node:assert/strict`, `node:test`
 - Exports: _none_

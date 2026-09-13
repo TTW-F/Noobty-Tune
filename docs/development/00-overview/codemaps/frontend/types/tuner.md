@@ -7,4 +7,4 @@
 ## Modules
 ### `types/tuner.ts`
 - Imports: _none_
-- Exports: `AudioEngineStatus`, `AudioFrame`, `DetectionSource`, `NoteMatch`, `NoteName`, `PitchDetector`, `PitchReading`, `PitchStabilizer`, `StabilizedPitchReading`, `TunerDeviation`, `TunerEngineError`, `TunerSelection`, `TunerState`, `TunerUiStatus`, `TuningStringId`, `TuningTarget`
+- Exports: `AudioEngineStatus`, `AudioFrame`, `DetectionSource`, `NoteMatch`, `NoteName`, `PitchDetector`, `PitchReading`, `PitchStabilizer`, `StabilizedPitchReading`, `TunerDeviation`, `TunerEngineError`, `TunerSelection`, `TunerState`, `TunerUiStatus`, `Tuning`, `TuningId`, `TuningStringId`, `TuningStringSpec`, `TuningTarget`

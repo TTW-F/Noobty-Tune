@@ -6,5 +6,5 @@
 
 ## Modules
 ### `features/tuner/model/__tests__/tunerViewModel.test.ts`
-- Imports: `../../../../types/pitchTracking`, `../../ui/TunerDisplayAdapter`, `../tunerViewModel`, `node:assert/strict`, `node:test`
+- Imports: `../../../../types/pitchTracking`, `../tunerViewModel`, `node:assert/strict`, `node:test`
 - Exports: _none_

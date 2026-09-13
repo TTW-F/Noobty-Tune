@@ -7,4 +7,4 @@
 ## Modules
 ### `features/tuner/model/useTunerPrototype.ts`
 - Imports: `../../../lib/audio`, `../../../lib/logging/developerLogger`, `../../../lib/logging/timeSeriesLogger`, `../../../lib/music`, `../../../types`, `../../../types/pitchTracking`, `./tunerState`, `./tunerViewModel`, `react`
-- Exports: `DetectorComparisonDebug`, `useTunerPrototype`
+- Exports: `DetectorComparisonDebug`, `EMPTY_LIVE_SAMPLE`, `LiveAudioSample`, `loadCustomTunings`, `loadStoredSelection`, `useTunerPrototype`

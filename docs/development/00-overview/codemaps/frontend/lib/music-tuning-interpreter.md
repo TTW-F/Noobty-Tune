@@ -6,5 +6,5 @@
 
 ## Modules
 ### `lib/music/tuningInterpreter.ts`
-- Imports: `../../types/pitchTracking`, `../../types/tuner`, `./noteMapping`, `./standardTuning`
+- Imports: `../../types/pitchTracking`, `../../types/tuner`, `./noteMapping`
 - Exports: `TuningInterpreter`

@@ -88,9 +88,10 @@
   - `docs/development/00-overview/codemaps/frontend/lib/music-note-mapping.md`
   - `docs/development/30-modules/tuner-implementation-current.md`
   - `docs/development/30-modules/audio-and-detection-current.md`
-- `src/lib/music/standardTuning.ts`
-  - `docs/development/00-overview/codemaps/frontend/lib/music-standard-tuning.md`
+- `src/lib/music/tuning.ts`
+  - `docs/development/00-overview/codemaps/frontend/lib/music-tuning.md`
   - `docs/development/30-modules/tuner-implementation-current.md`
+  - `docs/adr/0006-tuning-catalog-module.md`
 
 ## 6) Types
 

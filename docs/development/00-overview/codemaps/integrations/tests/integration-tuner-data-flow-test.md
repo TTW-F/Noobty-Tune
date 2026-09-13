@@ -6,5 +6,5 @@
 
 ## Modules
 ### `__tests__/integration/tunerDataFlow.test.ts`
-- Imports: `../../features/tuner/model/tunerViewModel`, `../../lib/audio/continuousPitchTracker`, `../../lib/music/tuningInterpreter`, `../../types`, `../../types/pitchTracking`, `node:assert/strict`, `node:test`
+- Imports: `../../features/tuner/model/tunerViewModel`, `../../lib/audio/continuousPitchTracker`, `../../lib/music/tuning`, `../../lib/music/tuningInterpreter`, `../../types`, `../../types/pitchTracking`, `node:assert/strict`, `node:test`
 - Exports: _none_

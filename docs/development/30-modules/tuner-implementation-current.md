@@ -157,5 +157,5 @@
 - `src/lib/audio/continuousPitchTracker.ts`
 - `src/features/tuner/model/tunerViewModel.ts`
 - `src/lib/music/noteMapping.ts`
-- `src/lib/music/standardTuning.ts`
+- `src/lib/music/tuning.ts`
 - `src/types/tuner.ts`
