@@ -22,7 +22,8 @@
 <p align="center">
   <a href="https://tune.noobty.top"><strong>Live Demo</strong></a> ·
   <a href="./docs/README.md"><strong>Docs Hub</strong></a> ·
-  <a href="https://github.com/TTW-F/Noobty-Tune/issues"><strong>Report Issue</strong></a>
+  <a href="https://github.com/TTW-F/Noobty-Tune/issues"><strong>Report Issue</strong></a> ·
+  <a href="https://video.noobty.top"><strong>NoobTy Video Downloader</strong></a>
 </p>
 
 ## Language
