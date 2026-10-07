@@ -20,7 +20,27 @@
     <meta property="og:url" content="https://tune.noobty.top/" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- SEO 静态正文：百度等不渲染 JS 的爬虫读这段；React 挂载后整体替换为应用界面 -->
+      <div style="max-width:680px;margin:0 auto;padding:48px 24px;font-family:system-ui,-apple-system,sans-serif;color:#e8eaed;background:#0d0f12;min-height:100vh;line-height:1.7">
+        <h1>Noobty Tune — 在线吉他调音器</h1>
+        <p>Noobty Tune 是一款在浏览器里直接运行的免费吉他调音器：打开网页、拨一根弦，屏幕上的大号音分刻度立刻告诉你这根弦是偏低还是偏高、偏了多少，照着调准即可。无需安装 App，无需注册登录，手机和电脑都能用。</p>
+        <h2>特点</h2>
+        <ul>
+          <li><strong>纯本地处理</strong>：音频分析全部在你的设备上完成，麦克风声音不会上传到任何服务器。</li>
+          <li><strong>大屏音分刻度</strong>：以音分（cent）为单位直观显示偏差，绿色即准，一眼可读。</li>
+          <li><strong>可换调弦</strong>：内置标准调弦等多种预设，支持 7 弦吉他与半音阶（Chromatic）自由模式，也能自定义每根弦的音高。</li>
+          <li><strong>免费无限次</strong>：没有次数限制，也没有账号体系。</li>
+        </ul>
+        <h2>怎么用</h2>
+        <ol>
+          <li>允许浏览器使用麦克风（音频只在本地分析）。</li>
+          <li>选择你的调弦方案（默认标准调弦 EADGBE）。</li>
+          <li>逐根拨弦，看指针与音分读数：偏低往紧调，偏高往松调，直到刻度居中变绿。</li>
+        </ol>
+        <p>适合吉他初学者日常校音，也适合需要大字号读数的舞台快速调弦场景。</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
