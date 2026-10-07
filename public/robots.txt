@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# Search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Baiduspider
+Allow: /
+
+User-agent: Baiduspider-render
+Allow: /
+
+Sitemap: https://tune.noobty.top/sitemap.xml
